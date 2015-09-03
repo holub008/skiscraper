@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!--css for the search bar -->
+<style>
+	body{
+		margin-top:20px;
+	}
+</style>
+
+<!--javascript to update the dropdown -->
+<script>
+	$(document).ready(function(e){
+		$('.search-panel .dropdown-menu').find('a').click(function(e) {
+			e.preventDefault();
+			var concept = $(this).text();
+			$('.search-panel span#search_concept').text(concept);
+		});
+	});
+</script>
+<h2>Search SkinnySki result archives </h2><h4>May several minutes for recent results to be incorporated in search. Search is very conservative... working on it.<br><br></h4>
+            
+<!-- the search bar. not qworking for whatever reason (js). see demo at http://bootsnipp.com/snippets/featured/search-panel-with-filters-->
+<div class="container">
+    <div class="row">    
+        <div class="col-xs-8 col-xs-offset-2">
+		    <div class="input-group">
+                <div class="input-group-btn search-panel">
+                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                    	<span id="search_concept">Select Class</span> <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" role="menu">
+                      <li><a>Citizen</a></li>
+                      <li><a>High School</a></li>
+					  <li class="divider"></li>
+                      <li><a>Both</a></li>
+                    </ul>
+                </div>
+                <input type="hidden" name="search_param" value="all" id="search_param">         
+                <input type="text" class="form-control" id="search_bar" placeholder="Search name">
+                <span class="input-group-btn">
+                    <button class="btn btn-default" type="button" id = "submit_but"><span class="glyphicon glyphicon-search"></span></button>
+                </span>
+            </div>
+        </div>
+	</div>
+</div>
+
+<!-- Hide results until some input is given. start hidden -->
+<style type="text/css">
+    #results {
+        display: none;
+    }
+</style>
+
+<div class="container" id="results">
+	<table id="resTable" class="display" cellspacing="0" width="100%">
+		<thead>
+			<tr>
+				<th>Race Name</th>
+				<th>Date</th>
+				<th>Season</th>
+				<th>URL for results</th>
+			</tr>
+		</thead>
+
+		<tfoot>
+			<tr>
+				<tf>Race Name</th>
+				<tf>Date</th>
+				<tf>Season</th>
+				<th>URL for results</th>
+			</tr>
+		</tfoot>
+
+	</table>
+</div>
+
+<!-- handle ajax for submitting and displaying search results -->
+<script>
+
+	//on page load, render the datatable
+    var rtable = $('#resTable').DataTable({});
+	
+	//upon hitting the search button, load the results table
+    $("#submit_but").on('click', function() {
+        $('#results').css('display','inline');
+    } );
+	
+	$('#submit_but').bind('click',function(){
+		$.getJSON('/search/_submit', {
+			key : $('#search_bar').val()
+		}, function(data) {
+						//clear out old results
+						rtable.clear();
+						//insert new rows
+                        data.results.forEach( function(item) {rtable.row.add(item.slice(1));});
+						//render new tables
+						rtable.draw();
+                    });
+		
+	
+	});
+</script>
+{% endblock %}
