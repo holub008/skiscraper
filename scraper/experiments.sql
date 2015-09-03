@@ -11,4 +11,4 @@ GRANT ALL PRIVILEGES ON skiscraper.* TO 'scraper'@'localhost' WITH GRANT OPTION;
 /*test insertion into db */
 INSERT INTO skiscraper.races (rpath, rname, rdate, ryear, rurl) VALUES('text/2015/test.txt','tester','2015/10/31','2015','skinnyski.com');
 SELECT * FROM skiscraper.races;
-DELETE FROM skiscraper.races LIMIT 1;
+DELETE FROM skiscraper.races LIMIT 100;
