@@ -66,9 +66,9 @@
 
 		<tfoot>
 			<tr>
-				<tf>Race Name</th>
-				<tf>Date</th>
-				<tf>Season</th>
+				<th>Race Name</th>
+				<th>Date</th>
+				<th>Season</th>
 				<th>URL for results</th>
 			</tr>
 		</tfoot>
@@ -78,9 +78,18 @@
 
 <!-- handle ajax for submitting and displaying search results -->
 <script>
-
+	
 	//on page load, render the datatable
-    var rtable = $('#resTable').DataTable({});
+    var rtable = $('#resTable').DataTable({"columnDefs": [ {
+    "targets": 3,
+    "data": "download_link",
+    "render": function ( data, type, full, meta ) {
+      return '<a href="'+full[3]+'">View Results PDF</a>';
+    }
+  } ]
+});
+	
+	//var rtable = $('#resTable').DataTable({});
 	
 	//upon hitting the search button, load the results table
     $("#submit_but").on('click', function() {
