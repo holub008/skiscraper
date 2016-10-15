@@ -1,7 +1,7 @@
 CREATE DATABASE skiscraper;
 CREATE TABLE skiscraper.races (rpath VARCHAR(512), rname VARCHAR(512), rdate DATE, ryear VARCHAR(16));
 ALTER TABLE skiscraper.races ADD rurl VARCHAR(512);
-ALTER TABLE skiscraper MODIFY rdate VARCHAR(128);
+ALTER TABLE skiscraper.races MODIFY rdate VARCHAR(128);
 /* create a new user to get at the table, give permissions*/
 CREATE USER 'scraper'@'localhost';
 SET PASSWORD FOR 'scraper'@'localhost' = PASSWORD('Compellent04');

@@ -1,0 +1,4 @@
+*.pyc
+#gened stuff
+scraper/pdf
+scraper/text

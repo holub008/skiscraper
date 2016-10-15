@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(0, '/home/ski/dev/skiscraper/scraper/')
+#todo bleck
+sys.path.insert(0, '/Users/kholub/skiscraper/scraper/')
 
 import searchYear
 
@@ -20,11 +21,12 @@ def submitsearch():
 	search_key = request.args.get('key',None,type=str)
 	
 	#TODO
-	years = ["2013","2014"]
+	years = ["2014","2015"]
 	
 	rows = searchYear.search(search_key,years)
 	
 	return jsonify(results=rows)
 
+# entry point
 if __name__ == '__main__':
     app.run(host="0.0.0.0",port=8080,debug=True)

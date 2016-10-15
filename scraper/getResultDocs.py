@@ -54,7 +54,7 @@ def handlePDF(race_obj,year):
 	##system call to make a text file of a pdf
 	##TODO ensure the pdftotext utility is installed
 	##TODO return value
-	handle = subprocess.Popen(['/usr/bin/pdftotext',path_fname_ext], stdout = subprocess.PIPE)
+	handle = subprocess.Popen(['/usr/local/bin/pdftotext',path_fname_ext], stdout = subprocess.PIPE)
 	handle.wait() ##block until file is written
 	os.rename("%s.txt"%path_fname, txt_dest)
 	
