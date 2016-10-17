@@ -9,34 +9,42 @@ class RaceInfo:
     """
     metadata about a race that can be used to uniquely identify the race
     """
-    def __init__(self):
+    def __init__(self, s):
+        """
+        :param s: the season of the race, as a year (str)
+        """
+        self.season= s
         self.date = None
-        self.URL = None
+        self.url = None
         self.name = None
 
-    def set_date_from_skinnyski(self, season, day):
+    def set_date_from_skinnyski(self, day):
         """
-        :param season: the year representing the season (str)
+        mutates both self.date and self.season
         :param day: the month,day combination formatted mon.xx (str)
         """
-        date_with_month = datetime.strptime(day,"%b.%e")
+        # since we don't know year, we might get a ValueError on leap years when considering day- must strip it out.
+        date_with_month = datetime.strptime(day.split(".")[0],"%b")
         # case: season is the prior year
         if date_with_month.month in (1, 2, 3, 4, 5):
             try:
-                season = str(int(season) + 1)
+                self.season = str(int(self.season) + 1)
             except:
                 print("Error: could not parse season as an integer")
         # case: we aren't in the late months of the year, something unexpected has happened
         elif date_with_month.month not in (11, 12):
-            print "Error: unexpected season (%s) / month (%s) combination encountered" % (season, date_with_month.month)
+            print "Error: unexpected season (%s) / month (%s) combination encountered" % (self.season, date_with_month.month)
 
-        self.date = datetime.strptime("%s.%s" % (season, day), '%Y.%b.%d')
+        self.date = datetime.strptime("%s.%s" % (self.season, day), '%Y.%b.%d')
+
+    def get_cleansed_name(self):
+        return self.name.replace("/", "").replace(";", "").replace(",", "").replace("'","")
 
     def __str__(self):
-        return "<date:%s, URL:%s, name:%s>" % (self.season, self.URL, self.name,)
+        return "<date:%s, URL:%s, name:%s>" % (self.season, self.url, self.name,)
 
     def __repr__(self):
-        return "%s||%s||%s" % (self.season, self.URL, self.name,)
+        return "%s||%s||%s" % (self.season, self.url, self.name,)
 
 
 class RaceResult:

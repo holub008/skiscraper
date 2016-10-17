@@ -1,11 +1,14 @@
 # a tab delimited pair of keys and their set values
 
 # number of years to be searched
-HISTORY_LENGTH	10
+HISTORY_LENGTH,10
 
-RESULTS_URL	https://skinnyski.com
+RESULTS_URL,https://skinnyski.com
 
 # username, password, and table name for race db (NO DEFAULTS!)
-DB_USER scraper
-DB_PASSWORD	Compellent04
-RACE_DB	skiscraper.races
+DB_USER,scraper
+DB_PASSWORD,Compellent04
+RACE_DB,skiscraper.races
+
+# absolute path to pdftotext utility
+PDF_TO_TEXT,/usr/local/bin/pdftotext

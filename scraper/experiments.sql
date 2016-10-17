@@ -1,3 +1,5 @@
+DROP TABLE skiscraper.races;
+
 CREATE DATABASE skiscraper;
 CREATE TABLE skiscraper.races (rpath VARCHAR(512), rname VARCHAR(512),
                                 rdate DATE, ryear VARCHAR(16), rurl VARCHAR(512), result_type VARCHAR(16));

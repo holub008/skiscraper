@@ -3,12 +3,12 @@ a config accessor
 """
 import os
 
-SCRAPER_TOP = "SCRAPERTOP env var not set"
+SCRAPER_TOP = "SCRAPERTOP env var not set "
 if "SCRAPERTOP" in os.environ:
     SCRAPER_TOP = os.environ["SCRAPERTOP"]
 
 COMMENT_CHAR = "#"
-DELIM_CHAR = "\t"
+DELIM_CHAR = ","
 CONFIG_PATH =  os.path.join(SCRAPER_TOP,"data/config.txt")
 
 def parse_configs():
@@ -25,14 +25,15 @@ def parse_configs():
                 fields = line.split(DELIM_CHAR)
                 if len(fields) < 2:
                     # todo logging
-                    print("Warning: invalid config line: %s" % line)
+                    print("Warning: skipping config line: %s" % line)
                 else:
-                    config_map[fields[0]] = fields[1].rstrip("\n")
+                    config_map[fields[0]] = fields[1].rstrip()
     return config_map
 
 
 class Configs:
     config_map = parse_configs()
+    SCRAPERTOP = SCRAPER_TOP
 
     def __init__(self):
         print("Debug: creating Config object")
@@ -46,7 +47,7 @@ class Configs:
             try:
                 return int(self.config_map[key])
             except:
-                print("Error: could not parse value '%s' for key '%s' as an int"%(val, key))
+                print("Error: could not parse value '%s' for key '%s' as an int"%(self.config_map[key], key))
         return None
 
     def get_as_string(self, key):

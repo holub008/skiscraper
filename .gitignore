@@ -1,4 +1,4 @@
 *.pyc
 #gened stuff
-scraper/pdf
-scraper/text
+data/pdf
+data/text
