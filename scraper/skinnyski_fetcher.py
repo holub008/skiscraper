@@ -6,6 +6,8 @@ import urllib2
 
 from configs import Configs
 from HTMLParser import HTMLParser
+import itiming_fetcher
+import mtec_fetcher
 from RaceResults import RaceInfo
 
 config = Configs()
@@ -83,6 +85,24 @@ def is_pdf(race_info):
     :return: if the indicated url is a pdf (bool)
     """
     return race_info.url.endswith(".pdf")
+
+
+def is_mtec_hosted(race_info):
+    """
+    :param race_info: the race metadata to be inspected (RaceInfo)
+    :return: if the given race is hosted on mtec.com (bool)
+    """
+    # todo regex
+    return "mtec" in race_info.url
+
+
+def is_itiming_hosted(race_info):
+    """
+    :param race_info:  the race metadata to be inspected (RaceInfo)
+    :return: if the given race is hosted on itiming.com
+    """
+    # todo regex
+    return "itiming" in race_info.url
 
 
 def get_skinnyski_pdf(race_info):
@@ -184,6 +204,10 @@ def process_race(race_info):
     if race_info.url:
         if is_pdf(race_info):
             handle_pdf(race_info)
+        elif is_mtec_hosted(race_info):
+            mtec_fetcher.process_race(race_info)
+        elif is_itiming_hosted(race_info):
+            itiming_fetcher.process_race(race_info)
         else:
             handle_nonpdf(race_info)
 
@@ -205,15 +229,14 @@ def get_race_infos(season):
         link_list = r.text[r.text.index("<ul>") + 4:r.text.index("</ul>")]
 
         parser = SkinnySkiRaceInfoParser(season)
-        #try:
-        parser.feed(link_list)
-        """
+        try:
+            parser.feed(link_list)
         except Exception as e:
             # TODO logging
             print("Failed to parse HTML- may be invalid: ")
             print(e)
             return []
-        """
+
         return parser.elements
     else:
         # TODO logging

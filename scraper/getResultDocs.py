@@ -2,6 +2,7 @@ import datetime
 
 from configs import Configs
 import skinnyski_fetcher
+import birkie_fetcher
 
 config = Configs()
 
@@ -16,8 +17,12 @@ for season in SEASONS:
     # get low hanging fruit from skinnyski
     race_infos = skinnyski_fetcher.get_race_infos(season)
     for race_info in race_infos:
+        # todo this doesn't solve race_infos that spawn more race_infos
         if skinnyski_fetcher.race_already_processed(race_info):
             print("Skipping race already present %s" % (race_info, ))
         else:
             skinnyski_fetcher.process_race(race_info)
+
+    # get birkie results from the birkie website
+    birkie_fetcher.fetch_and_process(season)
 
