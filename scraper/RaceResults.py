@@ -51,20 +51,24 @@ class RaceResult:
     """
     an individual's result from a race
     """
-    def __init__(self, n, t):
+    def __init__(self, n, t, p):
         """
         todo name should eventually be an id
         :param n: the name of the racer (str)
         :param t: the time of the racer (str)
+        :param p: the placement of the racer- could be an int or fractional (str)
         """
         self.name = n
         self.time = t
+        self.place = p
 
     def __str__(self):
-        return "<name:%s, time:%s>" % (self.name, self.time, )
+        return "<name:%s, time:%s, place:%s>" % (self.name, self.time, self.place)
 
     def __repr__(self):
-        return "%s||%s" % (self.name, self.time, )
+        return "%s||%s||%s" % (self.name, self.time, self.place)
+
+    def serialize(self, race_id):
 
 
 class RaceResults:
