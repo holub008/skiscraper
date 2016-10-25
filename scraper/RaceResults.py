@@ -2,8 +2,15 @@
 classes representing all the data we hold about races & results
 """
 from abc import ABCMeta, abstractmethod
+from configs import Configs
 from datetime import datetime
+import mysql.connector
 
+
+config = Configs()
+DB_USER = config.get_as_string("DB_USER")
+DB_PASSWORD = config.get_as_string("DB_PASSWORD")
+RACE_DB = config.get_as_string("RACE_DB")
 
 class RaceInfo:
     """
@@ -13,7 +20,7 @@ class RaceInfo:
         """
         :param s: the season of the race, as a year (str)
         """
-        self.season= s
+        self.season = s
         self.date = None
         self.url = None
         self.name = None
@@ -79,7 +86,7 @@ class RaceResults:
     __metaclass__ = ABCMeta
 
     @abstractmethod
-    def serialize(self):
+    def serialize(self, rpath):
         """
         persist the race result somewhere
         """
@@ -116,8 +123,28 @@ class StructuredRaceResults(RaceResults):
         self.info = info
         self.results = res
 
-    def serialize(self):
-        pass
+    def serialize(self, rpath):
+        """
+        :param rpath: path to the structured results , if stored on fs (str) suggested val "" if none
+        :return: void
+        """
+        cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host="localhost")
+        cursor = cnx.cursor()
+        # first, write the race metadata to the race db
+        raw_sql = "INSERT INTO %s (rpath, rname, rdate, ryear, rurl) VALUES (%s, %s, %s, %s, %s)" % (RACE_DB, rpath, self.info.get_cleansed_name(), self.info.date, self.info.season, self.info.url)
+        cursor.execute(raw_sql)
+        cnx.commit()
+
+        raw_sql = "SELECT id from %s WHERE rpath='%s' AND rname='%s' AND ryear='%s' AND rurl='%s'" % (RACE_DB, rpath, self.info.get_cleansed_name(), self.info.season, self.info.url)                                                                                             )
+
+        cursor.execute(raw_sql)
+        ids = [id[0] for id in cursor]
+        if len(ids) > 1:
+            print("Warning: a race appears to have been entered into the race db more than once. Proceeding with highest id")
+        race_id = max(ids)
+        # then insert the structured race results into the results db
+        for race_result in self.results:
+            race_result.serialize(race_id)
 
     @staticmethod
     def deserialize(race_id):
@@ -147,7 +174,7 @@ class UnstructuredRaceResults(RaceResults):
         self.info = info
         self.results = res
 
-    def serialize(self):
+    def serialize(self, rpath):
         pass
 
     @staticmethod

@@ -1,8 +1,8 @@
 DROP TABLE skiscraper.races;
 
-CREATE DATABASE skiscraper;
+CREATE DATABASE skiscraper IF NOT EXISTS;
 GRANT ALL PRIVILEGES ON skiscraper.* TO 'scraper'@'localhost' WITH GRANT OPTION;
-CREATE TABLE skiscraper.races (rpath VARCHAR(512), rname VARCHAR(512),
+CREATE TABLE skiscraper.races (id INT NOT NULL AUTO_INCREMENT, rpath VARCHAR(512), rname VARCHAR(512),
                                 rdate DATE, ryear VARCHAR(16), rurl VARCHAR(512), result_type VARCHAR(16));
 /* create a new user to get at the table, give permissions*/
 CREATE USER 'scraper'@'localhost';

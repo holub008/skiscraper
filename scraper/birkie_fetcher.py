@@ -1,6 +1,6 @@
 import requests
 from HTMLParser import HTMLParser
-from RaceResults import RaceResult
+from RaceResults import RaceResult, StructuredRaceResults
 # division ids for forming the url correspond to list index
 RACES = ["51K Skate","55K Classic","24K Skate","24K Classic"]
 
@@ -65,12 +65,16 @@ def fetch_and_process(season):
     """
     year = int(season) + 1
 
-    parser = Birkie2014Parser()
-    page = 0
-    lastt_page_size = 100
     # page size defaults to 100, if smaller, we've reached the end
-    while current_page_size == 100:
-        for div_ix, div in enumerate(RACES):
+    for div_ix, div in enumerate(RACES):
+        total_results = []
+        page = 0
+        current_page_size = 100
+        while current_page_size == 100:
+            # todo a bit inefficient
+            parser = Birkie2014Parser()
+
+            # indexed from 1
             div_id = div_ix + 1
             url = BASE_URL_FORMAT % (year, page, div_id)
             try:
@@ -81,9 +85,15 @@ def fetch_and_process(season):
             table = ""
             if response.status_code == 200:
                 table = response.text[response.text.index("Overall Event Results"):]
+                parser.feed(table)
+                current_page_size = len(parser.race_results)
+                total_results += parser.race_results
             else:
                 print("Bad response code (%d) at url %s" % (response.status_code, url))
-        partial_race_results = parser.feed(table)
+                current_page_size = 0
+            page += 1
+
+        StructuredRaceResults()
 
 if __name__ == "__main__":
     fetch_and_process("2015")
