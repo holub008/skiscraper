@@ -11,6 +11,7 @@ config = Configs()
 DB_USER = config.get_as_string("DB_USER")
 DB_PASSWORD = config.get_as_string("DB_PASSWORD")
 RACE_DB = config.get_as_string("RACE_DB")
+STRUCTURED_RESULTS_DB = config.get_as_string("STRUCTURED_RESULTS_DB")
 
 class RaceInfo:
     """
@@ -24,6 +25,18 @@ class RaceInfo:
         self.date = None
         self.url = None
         self.name = None
+
+    def __init__(self, s, d, u, n):
+        """
+        :param s: season (str)
+        :param d: date, arbitrary format (str)
+        :param u: url (str)
+        :param n: race name (str)
+        """
+        self.season = s
+        self.date = d
+        self.url = u
+        self.name = n
 
     def set_date_from_skinnyski(self, day):
         """
@@ -46,6 +59,18 @@ class RaceInfo:
 
     def get_cleansed_name(self):
         return self.name.replace("/", "").replace(";", "").replace(",", "").replace("'","")
+
+    def serialize(self, cursor, rpath):
+        """
+        write the info to db- it is the caller's responsibility to commit the insertions
+        :param rpath: path to the results file on the local fs (str)
+        :param cursor: db connection object (mysql.connector)
+        :return: void
+        """
+        raw_sql = "INSERT INTO %s (rpath, rname, rdate, ryear, rurl) VALUES ('%s', '%s', '%s', '%s', '%s')" % (
+        RACE_DB, rpath, self.get_cleansed_name(), self.date, self.season, self.url)
+
+        cursor.execute(raw_sql)
 
     def __str__(self):
         return "<date:%s, URL:%s, name:%s>" % (self.season, self.url, self.name,)
@@ -75,7 +100,16 @@ class RaceResult:
     def __repr__(self):
         return "%s||%s||%s" % (self.name, self.time, self.place)
 
-    def serialize(self, race_id):
+    def serialize(self, cursor, race_id):
+        """
+        the executed command must be committed by the caller
+        :param cursor: a db cusor object (mysql.connector.cursor)
+        :param race_id: the id of the race in the races db (int)
+        :return: void
+        """
+        raw_sql = "INSERT INTO %s (race_id, name, placement, race_time) VALUES (%d,  '%s', '%s', '%s')" \
+                  % (STRUCTURED_RESULTS_DB, race_id, self.name, self.place, self.time)
+        cursor.execute(raw_sql)
 
 
 class RaceResults:
@@ -125,26 +159,28 @@ class StructuredRaceResults(RaceResults):
 
     def serialize(self, rpath):
         """
+        write the race results to db. todo take connection object
         :param rpath: path to the structured results , if stored on fs (str) suggested val "" if none
         :return: void
         """
         cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host="localhost")
         cursor = cnx.cursor()
         # first, write the race metadata to the race db
-        raw_sql = "INSERT INTO %s (rpath, rname, rdate, ryear, rurl) VALUES (%s, %s, %s, %s, %s)" % (RACE_DB, rpath, self.info.get_cleansed_name(), self.info.date, self.info.season, self.info.url)
-        cursor.execute(raw_sql)
+        self.info.serialize(cursor, rpath)
         cnx.commit()
 
-        raw_sql = "SELECT id from %s WHERE rpath='%s' AND rname='%s' AND ryear='%s' AND rurl='%s'" % (RACE_DB, rpath, self.info.get_cleansed_name(), self.info.season, self.info.url)                                                                                             )
-
+        raw_sql = "SELECT id from %s WHERE rpath='%s' AND rname='%s' AND ryear='%s' AND rurl='%s'" % (RACE_DB, rpath, self.info.get_cleansed_name(), self.info.season, self.info.url)
         cursor.execute(raw_sql)
+
         ids = [id[0] for id in cursor]
         if len(ids) > 1:
             print("Warning: a race appears to have been entered into the race db more than once. Proceeding with highest id")
         race_id = max(ids)
         # then insert the structured race results into the results db
         for race_result in self.results:
-            race_result.serialize(race_id)
+            race_result.serialize(cursor, race_id)
+        cnx.commit()
+        cnx.close()
 
     @staticmethod
     def deserialize(race_id):

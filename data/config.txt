@@ -9,6 +9,7 @@ RESULTS_URL,https://skinnyski.com
 DB_USER,scraper
 DB_PASSWORD,Compellent04
 RACE_DB,skiscraper.races
+STRUCTURED_RESULTS_DB,skiscraper.structured_race_results
 
 # absolute path to pdftotext utility
 PDF_TO_TEXT,/usr/local/bin/pdftotext
