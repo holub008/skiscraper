@@ -1,6 +1,15 @@
 import requests
 from HTMLParser import HTMLParser
+import mysql.connector
+
+from configs import Configs
+import pdf_serializer
 from RaceResults import RaceResult, StructuredRaceResults, RaceInfo
+
+config = Configs()
+DB_USER = config.get_as_string("DB_USER")
+DB_PASSWORD = config.get_as_string("DB_PASSWORD")
+
 # division ids for forming the url correspond to list index
 RACES = ["51K Skate","55K Classic","24K Skate","24K Classic"]
 # bunch of boilerplate, only variable params are page # (100 per page), year, and divId
@@ -8,6 +17,8 @@ BASE_URL_FORMAT_2014ON = "http://birkie.pttiming.com/results/%d/index.php?page=1
 URL_PREFETCH_2007ON = "http://results.birkie.com"
 # yikes! this will spit raw sql errors if you supply malformed queries
 BASE_URL_FORMAT_2007ON = "http://results.birkie.com/index.php?event_id=%s&page_number=%s"
+URL_PREFETCH_PRE2007 = "http://www.birkie.com/ski/events/birkie/results/"
+
 # todo this is dynamic
 BIRKIE_RACE_NAME = "American Birkebeiner"
 NO_RACE_PATH = "/tmp/none.txt"
@@ -156,6 +167,78 @@ class Birkie2007To2014Prefetcher(HTMLParser):
                     return attr_pair[1]
         return None
 
+class BirkiePre2007Prefetcher(HTMLParser):
+    def __init__(self, season):
+        """
+        :param season: the season the birkie took place, one less than the year of the race your probably want (str)
+        """
+        HTMLParser.__init__(self)
+
+        self.year = str(int(season) + 1)
+        self.race_urls = []
+        self.race_names = []
+
+        self.current_header = ""
+
+        self.in_results_div = False
+        self.in_results_header = False
+        self.in_result_list_element = False
+        self.in_anchor = False
+        self.current_result_kept = False
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "div" and self.extract_attr(attrs, "class") == "col-xs-12 col-md-6":
+            self.in_results_div = True
+        elif self.in_results_div and tag == "h3":
+            self.in_results_header = True
+        elif self.in_results_div and tag == "li":
+            self.in_result_list_element = True
+        elif self.in_result_list_element and tag == "a":
+            self.in_anchor = True
+            url = self.extract_attr(attrs, "href")
+
+            if self.is_pdf_link(url) and :
+                self.race_urls.append(url)
+                self.current_result_kept = True
+            else:
+                self.current_result_kept = False
+
+    def handle_data(self, data):
+        if self.in_results_header:
+            self.current_header = data
+        elif self.in_anchor and self.current_result_kept:
+            # todo probably needs some cleansing
+            self.race_names.append(self.current_header + " " + data)
+
+    def handle_endtag(self, tag):
+        if self.in_results_div and tag == "div":
+            self.in_results_div = False
+        elif self.in_results_header and tag == "h3":
+            self.in_results_header = False
+        elif self.in_result_list_element and tag == "li":
+            self.in_result_list_element = False
+        elif self.in_anchor and tag == "a":
+            self.in_anchor = False
+
+    @staticmethod
+    def extract_attr(attrs, attr_name):
+        for attr_pair in attrs:
+            if len(attr_pair) == 2:
+                if attr_pair[0] == attr_name:
+                    return attr_pair[1]
+        return None
+
+    @staticmethod
+    def is_pdf_link(href):
+        # todo it's too late for doing this right...
+        return href.endswith(".pdf")
+    @staticmethod
+    def is_non_duped_result(href):
+        # sometimes two pdfs contain more or less the same results
+        # simple heuristic: these are always age group awards :)
+        # todo this requires more tuning!
+        return "age" in href.lower()
+
 def handle2014On(season):
     """
 
@@ -257,6 +340,44 @@ def handle2007To2015(season):
         race = StructuredRaceResults(race_info, total_results)
         race.serialize(NO_RACE_PATH)
 
+def handlePre2007Season(season):
+    """
+    attempt to find unstructured results on the main results page where some pdfs reside
+    :param season: season the race took place, probably a year less than the race you are interested in (str)
+    :return: void
+    """
+    year = str(int(year) + 1)
+
+    try:
+        response = requests.get(URL_PREFETCH_PRE2007)
+    except Exception as e:
+        print("Error: failed to prefetch birkie races at url %s" % (URL_PREFETCH_PRE2007))
+        return
+
+    prefetch_parser = BirkiePre2007Prefetcher(season)
+    if response.status_code == 200:
+        prefetch_parser.feed(response.text)
+    else:
+        print("Error: failed to prefetch birkie races at url '%s' with return code %s" % (URL_PREFETCH_PRE2007, response.status_code))
+        return
+
+    cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host="localhost")
+
+    for ix, race_name in enumerate(prefetch_parser.race_names):
+        url = prefetch_parser.race_urls[ix]
+        race_info = RaceInfo(season, year, url, race_name)
+
+        try:
+            response = requests.get(url)
+        except Exception as e:
+            print("Failed to fetch pdf at url %s" % (url,))
+            continue
+
+        if response.status_code == 200:
+            text_path = pdf_serializer.write_pdf_and_text(race_info, response.text)
+            pdf_serializer.write_race_metadata(race_info, text_path, cnx)
+    cnx.close()
+
 def fetch_season(season):
     """
     results are stored differently for different years.
@@ -269,8 +390,8 @@ def fetch_season(season):
     elif season >= "2007":
         handle2007To2015(season)
     else:
-        # todo
-        pass
+        # attempt to find unstructured results on the main results pages
+        handlePre2007(season)
 
 
 if __name__ == "__main__":

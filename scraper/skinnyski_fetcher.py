@@ -1,13 +1,12 @@
 import mysql.connector
-import os
 import requests
-import subprocess
 import urllib2
 
 from configs import Configs
 from HTMLParser import HTMLParser
 import itiming_fetcher
 import mtec_fetcher
+from pdf_serializer import write_pdf_and_text, write_race_metadata
 from RaceResults import RaceInfo
 
 config = Configs()
@@ -15,9 +14,13 @@ SKINNYSKI_URL = config.get_as_string("RESULTS_URL")
 DB_USER = config.get_as_string("DB_USER")
 DB_PASSWORD = config.get_as_string("DB_PASSWORD")
 RACE_DB = config.get_as_string("RACE_DB")
-PDF_TO_TEXT = config.get_as_string("PDF_TO_TEXT")
-DATA_DIR = os.path.join(config.SCRAPERTOP, "data/")
 
+######################################
+# todo fetcher abstract class
+# fetchers may delegate to other fetchers, eg. skinnyski->mtec hosted
+#
+# todo create a prefetcher to generate RaceInfos, as in birkie_fetcher
+######################################
 
 class SkinnySkiRaceInfoParser(HTMLParser):
     """
@@ -104,6 +107,19 @@ def is_itiming_hosted(race_info):
     # todo regex
     return "itiming" in race_info.url
 
+def handle_pdf(race_info):
+    """
+    :param race_info: race metadata (RaceInfo)
+    :return: void
+    """
+    pdf_content = get_skinnyski_pdf(race_info)
+    if pdf_content:
+        text_path = write_pdf_and_text(race_info, pdf_content)
+        cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host="localhost")
+        write_race_metadata(race_info, text_path, cnx)
+        cnx.close()
+    else:
+        print("Warning: skipping a pdf which was unable to be accessed")
 
 def get_skinnyski_pdf(race_info):
     """
@@ -120,71 +136,6 @@ def get_skinnyski_pdf(race_info):
         return response.read()
     else:
         return None
-
-
-def write_pdf_and_text(race_info, pdf_content):
-    """
-    the workhorse- writes the pdf to disk, converts it to a txt, writes txt to disk
-
-    :param race_info: race metdata (RaceInfo)
-    :param pdf_content: a blob representing (hopefully) a pdf (str)
-    :return: void
-    """
-
-    fpath = os.path.join(DATA_DIR,"pdf/", race_info.season)
-    path_fname = os.path.join(fpath, race_info.get_cleansed_name())
-    path_fname_ext = "%s.pdf" % (path_fname, )
-
-    txt_path = os.path.join(DATA_DIR, "text/", race_info.season)
-    txt_dest = os.path.join(txt_path, race_info.get_cleansed_name())
-    txt_dest_ext = "%s.txt" % (txt_dest, )
-
-    # build the data dest dirs, if not there
-    if not os.path.exists(fpath):
-        os.makedirs(fpath)
-    if not os.path.exists(txt_path):
-        os.makedirs(txt_path)
-
-    # write the data to a pdf
-    pdf_file = open(path_fname_ext,'wb')
-    pdf_file.write(pdf_content)
-    pdf_file.close()
-
-    # todo check return value of pdftotext
-    handle = subprocess.Popen([PDF_TO_TEXT, path_fname_ext, txt_dest_ext], stdout = subprocess.PIPE)
-    handle.wait() # block until file is written
-
-    return txt_dest_ext
-
-
-def write_race_metadata(race_info, text_path):
-    # todo create only one connection object (sloooow)
-    cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host="localhost")
-    cursor = cnx.cursor()
-
-    # ensure that the parser found all the race properties
-    # if we don't make this entry in the db, the race will simply never be searched
-    if race_info.name and race_info.url and race_info.date:
-        cursor.execute("INSERT INTO %s (rpath, rname, rdate, ryear, rurl) VALUES('%s','%s','%s','%s','%s')" % (RACE_DB,
-        text_path, race_info.get_cleansed_name(), race_info.date, race_info.season, race_info.url))
-        cnx.commit()
-    else:
-        print("Missing necessary race info fields- this entry will not be searched")
-        # todo logging
-    cnx.close()
-
-
-def handle_pdf(race_info):
-    """
-    :param race_info: race metadata (RaceInfo)
-    :return: void
-    """
-    pdf_content = get_skinnyski_pdf(race_info)
-    if pdf_content:
-        text_path = write_pdf_and_text(race_info, pdf_content)
-        write_race_metadata(race_info, text_path)
-    else:
-        print("Warning: skipping a pdf which was unable to be accessed")
 
 
 def handle_nonpdf(race_info):
@@ -245,7 +196,7 @@ def get_race_infos(season):
 
 
 def race_already_processed(race_info):
-
+    # todo move to utility class for recycling!
     # ensure that the parser found all the race properties
     # if we don't make this entry in the db, the race will simply never be searched
     if race_info.name and race_info.url and race_info.date:
