@@ -6,6 +6,7 @@ RACES = ["51K Skate","55K Classic","24K Skate","24K Classic"]
 # bunch of boilerplate, only variable params are page # (100 per page), year, and divId
 BASE_URL_FORMAT_2014ON = "http://birkie.pttiming.com/results/%d/index.php?page=1150&r_page=division&pageNum_rsOverall=%d&divID=%d"
 URL_PREFETCH_2007ON = "http://results.birkie.com"
+# yikes! this will spit raw sql errors if you supply malformed queries
 BASE_URL_FORMAT_2007ON = "http://results.birkie.com/index.php?event_id=%s&page_number=%s"
 # todo this is dynamic
 BIRKIE_RACE_NAME = "American Birkebeiner"
@@ -138,7 +139,7 @@ class Birkie2007To2014Prefetcher(HTMLParser):
         # quick hack, check if the season is a substring of the race name
         if self.in_option and self.year in data:
             self.event_ids.append(self.current_id)
-            self.event_names.append(self.event_names)
+            self.event_names.append(data)
 
     def handle_endtag(self, tag):
         if self.in_race_select and tag == "select":
@@ -224,14 +225,16 @@ def handle2007To2015(season):
     # now we can fetch the results for the given ids
     for ix, race_id in enumerate(prefetch_parser.event_ids):
         race_name = prefetch_parser.event_names[ix]
-        parser = Birkie2007OnParser()
         total_results = []
-        page = 0
+        # indexed from 1 here for some reason
+        page = 1
         current_page_size = 100
 
         # we expect a full page to be of size 100, anything less means no more results
         while current_page_size >= 100:
             url = BASE_URL_FORMAT_2007ON % (race_id, page)
+            # reset state of the parser by creating a new one :/
+            parser = Birkie2007OnParser()
 
             try:
                 response = requests.get(url)
@@ -248,9 +251,8 @@ def handle2007To2015(season):
                 current_page_size = 0
             page +=1
 
-
         # todo get actual date of the race
-        url_for_db = BASE_URL_FORMAT_2007ON % (race_id)
+        url_for_db = BASE_URL_FORMAT_2007ON % (race_id, page)
         race_info = RaceInfo(season, str(year), url_for_db, race_name)
         race = StructuredRaceResults(race_info, total_results)
         race.serialize(NO_RACE_PATH)
@@ -272,4 +274,4 @@ def fetch_season(season):
 
 
 if __name__ == "__main__":
-    fetch_season("2015")
+    fetch_season("2008")
