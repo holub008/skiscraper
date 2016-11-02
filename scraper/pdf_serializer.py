@@ -9,6 +9,7 @@ PDF_TO_TEXT = config.get_as_string("PDF_TO_TEXT")
 DATA_DIR = os.path.join(config.SCRAPERTOP, "data/")
 ###############################################
 # utilities to serialize pdf data
+# todo merge this into UnstructuredRaceResults
 ##############################################
 
 def write_pdf_and_text(race_info, pdf_content):
@@ -68,8 +69,6 @@ def write_race_metadata(race_info, text_path, cnx):
     if race_info.name and race_info.url and race_info.date:
         cursor.execute("INSERT INTO %s (rpath, rname, rdate, ryear, rurl) VALUES('%s','%s','%s','%s','%s')" % (RACE_DB,
         text_path, race_info.get_cleansed_name(), race_info.date, race_info.season, race_info.url))
-        cnx.commit()
     else:
         print("Missing necessary race info fields- this entry will not be searched")
         # todo logging
-    cnx.close()

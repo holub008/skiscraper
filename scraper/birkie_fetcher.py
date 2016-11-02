@@ -1,6 +1,7 @@
 import requests
 from HTMLParser import HTMLParser
 import mysql.connector
+import urllib2
 
 from configs import Configs
 import pdf_serializer
@@ -185,19 +186,20 @@ class BirkiePre2007Prefetcher(HTMLParser):
         self.in_result_list_element = False
         self.in_anchor = False
         self.current_result_kept = False
+        self.current_race_name_parts = []
 
     def handle_starttag(self, tag, attrs):
         if tag == "div" and self.extract_attr(attrs, "class") == "col-xs-12 col-md-6":
             self.in_results_div = True
         elif self.in_results_div and tag == "h3":
             self.in_results_header = True
-        elif self.in_results_div and tag == "li":
+        elif self.in_results_div and tag == "li" and self.year in self.current_header:
             self.in_result_list_element = True
         elif self.in_result_list_element and tag == "a":
             self.in_anchor = True
             url = self.extract_attr(attrs, "href")
 
-            if self.is_pdf_link(url) and :
+            if self.is_pdf_link(url) and self.is_non_duped_result(url):
                 self.race_urls.append(url)
                 self.current_result_kept = True
             else:
@@ -207,8 +209,7 @@ class BirkiePre2007Prefetcher(HTMLParser):
         if self.in_results_header:
             self.current_header = data
         elif self.in_anchor and self.current_result_kept:
-            # todo probably needs some cleansing
-            self.race_names.append(self.current_header + " " + data)
+            self.current_race_name_parts += data.split()
 
     def handle_endtag(self, tag):
         if self.in_results_div and tag == "div":
@@ -219,6 +220,10 @@ class BirkiePre2007Prefetcher(HTMLParser):
             self.in_result_list_element = False
         elif self.in_anchor and tag == "a":
             self.in_anchor = False
+
+            if self.current_result_kept:
+                self.race_names.append(self.current_header + " " + " ".join(self.current_race_name_parts))
+                self.current_race_name_parts = []
 
     @staticmethod
     def extract_attr(attrs, attr_name):
@@ -232,12 +237,13 @@ class BirkiePre2007Prefetcher(HTMLParser):
     def is_pdf_link(href):
         # todo it's too late for doing this right...
         return href.endswith(".pdf")
+
     @staticmethod
     def is_non_duped_result(href):
         # sometimes two pdfs contain more or less the same results
         # simple heuristic: these are always age group awards :)
         # todo this requires more tuning!
-        return "age" in href.lower()
+        return "age" not in href.lower()
 
 def handle2014On(season):
     """
@@ -346,7 +352,7 @@ def handlePre2007Season(season):
     :param season: season the race took place, probably a year less than the race you are interested in (str)
     :return: void
     """
-    year = str(int(year) + 1)
+    year = str(int(season) + 1)
 
     try:
         response = requests.get(URL_PREFETCH_PRE2007)
@@ -368,15 +374,17 @@ def handlePre2007Season(season):
         race_info = RaceInfo(season, year, url, race_name)
 
         try:
-            response = requests.get(url)
+            response = urllib2.urlopen(url)
         except Exception as e:
             print("Failed to fetch pdf at url %s" % (url,))
             continue
 
-        if response.status_code == 200:
-            text_path = pdf_serializer.write_pdf_and_text(race_info, response.text)
+        if response.getcode() == 200:
+            text_path = pdf_serializer.write_pdf_and_text(race_info, response.read())
             pdf_serializer.write_race_metadata(race_info, text_path, cnx)
+    cnx.commit()
     cnx.close()
+
 
 def fetch_season(season):
     """
@@ -391,8 +399,8 @@ def fetch_season(season):
         handle2007To2015(season)
     else:
         # attempt to find unstructured results on the main results pages
-        handlePre2007(season)
+        handlePre2007Season(season)
 
 
 if __name__ == "__main__":
-    fetch_season("2008")
+    fetch_season("2001")
