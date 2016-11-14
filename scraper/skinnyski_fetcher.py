@@ -118,6 +118,8 @@ def handle_pdf(race_info):
         race_id = race_info.serialize(cnx.cursor(), text_path, "unstructured")
         cnx.close()
         # yikes I've coded myself into a corner here :) todo!
+        # the solution should be to write all races in the same directory (maybe a pdf/ and text/) with the race_id as the filename
+        # no need for a filepath then
         text_path = write_pdf_and_text(race_info, pdf_content, race_id)
     else:
         print("Warning: skipping a pdf which was unable to be accessed")
