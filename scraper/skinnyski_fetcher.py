@@ -6,7 +6,7 @@ from configs import Configs
 from HTMLParser import HTMLParser
 import itiming_fetcher
 import mtec_fetcher
-from pdf_serializer import write_pdf_and_text, write_race_metadata
+from pdf_serializer import write_pdf_and_text
 from RaceResults import RaceInfo
 
 config = Configs()
@@ -30,7 +30,7 @@ class SkinnySkiRaceInfoParser(HTMLParser):
         # since we're overriding the init member function of HTMLParser, need to run superclass's init
         HTMLParser.__init__(self)
         self.elements = []
-        self.current_element = RaceInfo(season)
+        self.current_element = RaceInfo.create_empty(season)
         self.current_name_starter = ""
         self.season = season
 
@@ -52,7 +52,7 @@ class SkinnySkiRaceInfoParser(HTMLParser):
         if tag == 'li':
             self.elements.append(self.current_element)
             self.first_anchor = True
-            self.current_element = RaceInfo(self.season)
+            self.current_element = RaceInfo.create_empty(self.season)
         elif tag == 'a':
             self.first_anchor = False
 
@@ -114,10 +114,11 @@ def handle_pdf(race_info):
     """
     pdf_content = get_skinnyski_pdf(race_info)
     if pdf_content:
-        text_path = write_pdf_and_text(race_info, pdf_content)
         cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host="localhost")
-        write_race_metadata(race_info, text_path, cnx)
+        race_id = race_info.serialize(cnx.cursor(), text_path, "unstructured")
         cnx.close()
+        # yikes I've coded myself into a corner here :) todo!
+        text_path = write_pdf_and_text(race_info, pdf_content, race_id)
     else:
         print("Warning: skipping a pdf which was unable to be accessed")
 
@@ -196,7 +197,7 @@ def get_race_infos(season):
 
 
 def race_already_processed(race_info):
-    # todo move to utility class for recycling!
+    # todo move to utility class for recycling!- use for birkie fetcher
     # ensure that the parser found all the race properties
     # if we don't make this entry in the db, the race will simply never be searched
     if race_info.name and race_info.url and race_info.date:
@@ -212,3 +213,7 @@ def race_already_processed(race_info):
         print "Found a race with a null name/url/date. Always will reprocess by default."
         return False
 
+if __name__ == "__main__":
+    race_infos = get_race_infos("2014")
+    for i in range(0,10):
+        process_race(race_infos[i])

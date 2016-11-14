@@ -9,7 +9,7 @@ if "SCRAPERTOP" in os.environ:
 
 COMMENT_CHAR = "#"
 DELIM_CHAR = ","
-CONFIG_PATH =  os.path.join(SCRAPER_TOP,"data/config.txt")
+CONFIG_PATH =  os.path.join(SCRAPER_TOP, "data", "config.txt")
 
 def parse_configs():
     """

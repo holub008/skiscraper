@@ -380,8 +380,8 @@ def handlePre2007Season(season):
             continue
 
         if response.getcode() == 200:
+            race_id = race_info.serialize(cnx.cursor(), text_path, "unstructured")
             text_path = pdf_serializer.write_pdf_and_text(race_info, response.read())
-            pdf_serializer.write_race_metadata(race_info, text_path, cnx)
     cnx.commit()
     cnx.close()
 

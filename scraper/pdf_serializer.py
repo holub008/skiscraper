@@ -12,12 +12,13 @@ DATA_DIR = os.path.join(config.SCRAPERTOP, "data/")
 # todo merge this into UnstructuredRaceResults
 ##############################################
 
-def write_pdf_and_text(race_info, pdf_content):
+def write_pdf_and_text(race_info, pdf_content, race_id):
     """
     save a pdf and text file to the local fs
     todo chuck the text blob into a unstructured_race_results table (probably still want local copies though)
     :param race_info: metadata about the race (RaceInfo)
     :param pdf_content: pdf blob (str)
+    :param race_id: the race_id associated with the race
     :return: path to the written text file
     """
 
@@ -53,22 +54,3 @@ def write_pdf_and_text(race_info, pdf_content):
     handle.wait() # block until file is written
 
     return txt_dest_ext
-
-
-def write_race_metadata(race_info, text_path, cnx):
-    """
-    it is the caller's responsibility to properly close the connection
-    :param race_info: race metadata (RaceInfo)
-    :param text_path: path to the text blob associated with the results (str)
-    :param cnx: a db connection (mysql.connector)
-    :return: void
-    """
-    cursor = cnx.cursor()
-    # ensure that the parser found all the race properties
-    # if we don't make this entry in the db, the race will simply never be searched
-    if race_info.name and race_info.url and race_info.date:
-        cursor.execute("INSERT INTO %s (rpath, rname, rdate, ryear, rurl) VALUES('%s','%s','%s','%s','%s')" % (RACE_DB,
-        text_path, race_info.get_cleansed_name(), race_info.date, race_info.season, race_info.url))
-    else:
-        print("Missing necessary race info fields- this entry will not be searched")
-        # todo logging
