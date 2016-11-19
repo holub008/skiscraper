@@ -58,15 +58,15 @@ class RaceInfo:
     def get_cleansed_name(self):
         return self.name.replace("/", "").replace(";", "").replace(",", "").replace("'","")
 
-    def serialize(self, cursor, rpath, result_type):
+    def serialize(self, cursor, result_type):
         """
         write the info to db- it is the caller's responsibility to commit the insertions
         :param rpath: path to the results file on the local fs (str)
         :param cursor: db connection object (mysql.connector)
         :return: id of the created race (int)
         """
-        raw_sql = "INSERT INTO %s (rpath, rname, rdate, ryear, rurl, result_type) VALUES ('%s', '%s', '%s', '%s', '%s', '%s')" % (
-        RACE_DB, rpath, self.get_cleansed_name(), self.date, self.season, self.url, result_type)
+        raw_sql = "INSERT INTO %s (rname, rdate, ryear, rurl, result_type) VALUES ('%s', '%s', '%s', '%s', '%s')" % (
+        RACE_DB, self.get_cleansed_name(), self.date, self.season, self.url, result_type)
 
         cursor.execute(raw_sql)
 

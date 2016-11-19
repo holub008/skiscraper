@@ -12,7 +12,7 @@ DATA_DIR = os.path.join(config.SCRAPERTOP, "data/")
 # todo merge this into UnstructuredRaceResults
 ##############################################
 
-def write_pdf_and_text(race_info, pdf_content, race_id):
+def write_pdf_and_text(pdf_content, race_id):
     """
     save a pdf and text file to the local fs
     todo chuck the text blob into a unstructured_race_results table (probably still want local copies though)
@@ -30,12 +30,12 @@ def write_pdf_and_text(race_info, pdf_content, race_id):
     :return: the path to the written text (str)
     """
 
-    fpath = os.path.join(DATA_DIR,"pdf/", race_info.season)
-    path_fname = os.path.join(fpath, race_info.get_cleansed_name())
+    fpath = os.path.join(DATA_DIR,"pdf/")
+    path_fname = os.path.join(fpath, str(race_id))
     path_fname_ext = "%s.pdf" % (path_fname, )
 
-    txt_path = os.path.join(DATA_DIR, "text/", race_info.season)
-    txt_dest = os.path.join(txt_path, race_info.get_cleansed_name())
+    txt_path = os.path.join(DATA_DIR, "text/")
+    txt_dest = os.path.join(txt_path, race_id)
     txt_dest_ext = "%s.txt" % (txt_dest, )
 
     # build the data dest dirs, if not there
