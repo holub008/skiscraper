@@ -7,7 +7,7 @@ from HTMLParser import HTMLParser
 import itiming_fetcher
 import mtec_fetcher
 from pdf_serializer import write_pdf_and_text
-from RaceResults import RaceInfo
+from RaceResults import RaceInfo, UnstructuredRaceResults
 
 config = Configs()
 SKINNYSKI_URL = config.get_as_string("RESULTS_URL")
@@ -114,13 +114,9 @@ def handle_pdf(race_info):
     """
     pdf_content = get_skinnyski_pdf(race_info)
     if pdf_content:
-        cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host="localhost")
-        race_id = race_info.serialize(cnx.cursor(), "unstructured")
-        cnx.close()
-        # yikes I've coded myself into a corner here :) todo!
-        # the solution should be to write all races in the same directory (maybe a pdf/ and text/) with the race_id as the filename
-        # no need for a filepath then
-        text_path = write_pdf_and_text(pdf_content, race_id)
+        results = UnstructuredRaceResults(race_info, pdf_content)
+        results.serialize()
+
     else:
         print("Warning: skipping a pdf which was unable to be accessed")
 

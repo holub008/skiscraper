@@ -5,7 +5,7 @@ import urllib2
 
 from configs import Configs
 import pdf_serializer
-from RaceResults import RaceResult, StructuredRaceResults, RaceInfo
+from RaceResults import RaceResult, StructuredRaceResults, RaceInfo, UnstructuredRaceResults
 
 config = Configs()
 DB_USER = config.get_as_string("DB_USER")
@@ -22,7 +22,6 @@ URL_PREFETCH_PRE2007 = "http://www.birkie.com/ski/events/birkie/results/"
 
 # todo this is dynamic
 BIRKIE_RACE_NAME = "American Birkebeiner"
-NO_RACE_PATH = "/tmp/none.txt"
 
 class Birkie2014Parser(HTMLParser):
     """
@@ -286,7 +285,7 @@ def handle2014On(season):
         url_for_db = BASE_URL_FORMAT_2014ON % (year, 0, div_id)
         race_info = RaceInfo(season, str(year), url_for_db, "%s %s" % (BIRKIE_RACE_NAME, div))
         race = StructuredRaceResults(race_info, total_results)
-        race.serialize(NO_RACE_PATH)
+        race.serialize()
 
 
 def handle2007To2015(season):
@@ -344,7 +343,7 @@ def handle2007To2015(season):
         url_for_db = BASE_URL_FORMAT_2007ON % (race_id, page)
         race_info = RaceInfo(season, str(year), url_for_db, race_name)
         race = StructuredRaceResults(race_info, total_results)
-        race.serialize(NO_RACE_PATH)
+        race.serialize()
 
 def handlePre2007Season(season):
     """
@@ -380,8 +379,8 @@ def handlePre2007Season(season):
             continue
 
         if response.getcode() == 200:
-            race_id = race_info.serialize(cnx.cursor(), text_path, "unstructured")
-            text_path = pdf_serializer.write_pdf_and_text(response.read(), race_id)
+            UnstructuredRaceResults(race_info, response.read()).serialize()
+
     cnx.commit()
     cnx.close()
 
@@ -403,4 +402,4 @@ def fetch_season(season):
 
 
 if __name__ == "__main__":
-    fetch_season("2001")
+    fetch_season("2014")

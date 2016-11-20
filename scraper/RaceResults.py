@@ -5,13 +5,16 @@ from abc import ABCMeta, abstractmethod
 from configs import Configs
 from datetime import datetime
 import mysql.connector
+import re
 
+from pdf_serializer import write_pdf_and_text
 
 config = Configs()
 DB_USER = config.get_as_string("DB_USER")
 DB_PASSWORD = config.get_as_string("DB_PASSWORD")
 RACE_DB = config.get_as_string("RACE_DB")
 STRUCTURED_RESULTS_DB = config.get_as_string("STRUCTURED_RESULTS_DB")
+UNSTRUCTURED_RESULTS_DB = config.get_as_string("UNSTRUCTURED_RESULTS_DB")
 
 class RaceInfo:
     """
@@ -61,7 +64,6 @@ class RaceInfo:
     def serialize(self, cursor, result_type):
         """
         write the info to db- it is the caller's responsibility to commit the insertions
-        :param rpath: path to the results file on the local fs (str)
         :param cursor: db connection object (mysql.connector)
         :return: id of the created race (int)
         """
@@ -137,23 +139,6 @@ class RaceResults:
         """
         pass
 
-    @staticmethod
-    @abstractmethod
-    def deserialize(race_id):
-        """
-        :param race_id: uniquely identifying value for the race (str)
-        :return: the deserialized RaceResult, if the race_id corresponds to a valid race
-        """
-        pass
-
-    @abstractmethod
-    def matches_query(self, query):
-        """
-        :param query: the value to be searched for (str) todo expand to a Query type (regex, name, etc.)
-        :return: whether not the results match the given query (bool)
-        """
-        pass
-
 
 class StructuredRaceResults(RaceResults):
     """
@@ -168,7 +153,7 @@ class StructuredRaceResults(RaceResults):
         self.info = info
         self.results = res
 
-    def serialize(self, rpath):
+    def serialize(self):
         """
         write the race results to db. todo take connection object
         :param rpath: path to the structured results , if stored on fs (str) suggested val "" if none
@@ -177,10 +162,11 @@ class StructuredRaceResults(RaceResults):
         cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host="localhost")
         cursor = cnx.cursor()
         # first, write the race metadata to the race db
-        self.info.serialize(cursor, rpath)
+        self.info.serialize(cursor, "structured")
         cnx.commit()
 
-        raw_sql = "SELECT id from %s WHERE rpath='%s' AND rname='%s' AND ryear='%s' AND rurl='%s'" % (RACE_DB, rpath, self.info.get_cleansed_name(), self.info.season, self.info.url)
+        # todo anything better, please!
+        raw_sql = "SELECT id from %s WHERE rname='%s' AND ryear='%s' AND rurl='%s'" % (RACE_DB, self.info.get_cleansed_name(), self.info.season, self.info.url)
         cursor.execute(raw_sql)
 
         ids = [id[0] for id in cursor]
@@ -193,19 +179,6 @@ class StructuredRaceResults(RaceResults):
         cnx.commit()
         cnx.close()
 
-    @staticmethod
-    def deserialize(race_id):
-        pass
-
-    def matches_query(self, query):
-        """
-        a simple implementation that checks if the query matches racer name by strict comparison
-        """
-        for result in self.results:
-            if result.name == query:
-                return True
-        return False
-
 
 class UnstructuredRaceResults(RaceResults):
     """
@@ -216,25 +189,28 @@ class UnstructuredRaceResults(RaceResults):
     def __init__(self, info, res):
         """
         :param info: Race metadata to uniquely identify the race (RaceInfo)
-        :param res: a text blob of results (str)
+        :param res: a pdf blob of results (str)
         """
         self.info = info
-        self.results = res
+        self.pdf_content = res
 
-    def serialize(self, rpath):
-        pass
-
-    @staticmethod
-    def deserialize(race_id):
-        pass
-
-    def matches_query(self, query):
+    def serialize(self):
         """
-        a simple implementation that splits the query into tokens on whitespace, then searches for those tokens
-        individually across the text blob. everything lowercase
+        1. write the race metadata 2. write the string
+        :return:
         """
-        case_insensitive_results = self.results.lower()
-        for token in query.split("\t"):
-            if not token.lower() in case_insensitive_results:
-                return False
-        return True
+
+        cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host="localhost")
+        cursor = cnx.cursor()
+        # first, write the race metadata to the race db
+        race_id = self.info.serialize(cursor, "unstructured")
+
+        # because I'm not sure mysql is the right tool for storing enormous strings, might still need to use the file
+        text_blob = write_pdf_and_text(self.pdf_content, race_id)
+
+        # todo make this type of prepared statement cleaner
+        raw_sql = "INSERT INTO %s " % (UNSTRUCTURED_RESULTS_DB) + "(race_id, text_blob) VALUES (%s, %s)"
+        cursor.execute(raw_sql, race_id, text_blob)
+        cnx.commit()
+
+

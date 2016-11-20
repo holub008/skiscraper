@@ -15,19 +15,9 @@ DATA_DIR = os.path.join(config.SCRAPERTOP, "data/")
 def write_pdf_and_text(pdf_content, race_id):
     """
     save a pdf and text file to the local fs
-    todo chuck the text blob into a unstructured_race_results table (probably still want local copies though)
-    :param race_info: metadata about the race (RaceInfo)
     :param pdf_content: pdf blob (str)
     :param race_id: the race_id associated with the race
-    :return: path to the written text file
-    """
-
-    """
-    the workhorse- writes the pdf to disk, converts it to a txt, writes txt to disk
-
-    :param race_info: race metdata (RaceInfo)
-    :param pdf_content: a blob representing (hopefully) a pdf (str)
-    :return: the path to the written text (str)
+    :return: the text content of pdf (str)
     """
 
     fpath = os.path.join(DATA_DIR,"pdf/")
@@ -35,7 +25,7 @@ def write_pdf_and_text(pdf_content, race_id):
     path_fname_ext = "%s.pdf" % (path_fname, )
 
     txt_path = os.path.join(DATA_DIR, "text/")
-    txt_dest = os.path.join(txt_path, race_id)
+    txt_dest = os.path.join(txt_path, str(race_id))
     txt_dest_ext = "%s.txt" % (txt_dest, )
 
     # build the data dest dirs, if not there
@@ -52,5 +42,8 @@ def write_pdf_and_text(pdf_content, race_id):
     # todo check return value of pdftotext
     handle = subprocess.Popen([PDF_TO_TEXT, path_fname_ext, txt_dest_ext], stdout = subprocess.PIPE)
     handle.wait() # block until file is written
+    if not handle.returncode == 0:
+        print "Warning: PDF to text returned with exit code %d." % (handle.returncode,)
 
-    return txt_dest_ext
+    with file(txt_dest_ext, "r") as text_file:
+        return text_file.read()

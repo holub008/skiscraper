@@ -3,13 +3,14 @@
 # number of years to be searched
 HISTORY_LENGTH,10
 
-RESULTS_URL,https://skinnyski.com
+RESULTS_URL,http://skinnyski.com
 
 # username, password, and table name for race db (NO DEFAULTS!)
 DB_USER,scraper
 DB_PASSWORD,Compellent04
 RACE_DB,skiscraper.races
 STRUCTURED_RESULTS_DB,skiscraper.structured_race_results
+UNSTRUCTURED_RESULTS_DB,skiscraper.unstructured_race_results
 
 # absolute path to pdftotext utility
 PDF_TO_TEXT,/usr/local/bin/pdftotext

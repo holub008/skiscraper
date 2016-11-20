@@ -12,7 +12,7 @@ DROP TABLE IF EXISTS skiscraper.races;
 CREATE TABLE skiscraper.races
 (
     id INT NOT NULL AUTO_INCREMENT,
-    rpath VARCHAR(512), rname VARCHAR(512),
+    rname VARCHAR(128),
     rdate VARCHAR(32),  -- todo
     ryear VARCHAR(16),
     rurl VARCHAR(512),
