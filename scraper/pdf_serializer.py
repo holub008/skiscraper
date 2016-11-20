@@ -39,7 +39,6 @@ def write_pdf_and_text(pdf_content, race_id):
     pdf_file.write(pdf_content)
     pdf_file.close()
 
-    # todo check return value of pdftotext
     handle = subprocess.Popen([PDF_TO_TEXT, path_fname_ext, txt_dest_ext], stdout = subprocess.PIPE)
     handle.wait() # block until file is written
     if not handle.returncode == 0:

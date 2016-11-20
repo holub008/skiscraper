@@ -202,8 +202,8 @@ def race_already_processed(race_info):
         # todo only one connection
         cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host="localhost")
         cursor = cnx.cursor()
-        cursor.execute("SELECT COUNT(*) FROM %s WHERE rname='%s' and ryear='%s' and rurl='%s'"
-                       % (RACE_DB, race_info.get_cleansed_name(), race_info.season, race_info.url))
+        raw_sql = "SELECT COUNT(*) FROM %s" % (RACE_DB,) + " WHERE rname=%s and ryear=%s and rurl=%s"
+        cursor.execute(raw_sql, (race_info.get_cleansed_name(), race_info.season, race_info.url))
         count = int(next(cursor)[0])
         cnx.close()
         return count > 0
