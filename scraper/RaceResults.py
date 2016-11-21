@@ -5,7 +5,6 @@ from abc import ABCMeta, abstractmethod
 from configs import Configs
 from datetime import datetime
 import mysql.connector
-import re
 
 from pdf_serializer import write_pdf_and_text
 
@@ -208,7 +207,6 @@ class UnstructuredRaceResults(RaceResults):
         # because I'm not sure mysql is the right tool for storing enormous strings, might still need to use the file
         text_blob = write_pdf_and_text(self.pdf_content, race_id)
 
-        # todo make this type of prepared statement cleaner
         raw_sql = "INSERT INTO %s " % (UNSTRUCTURED_RESULTS_DB) + "(race_id, text_blob) VALUES (%s, %s)"
         cursor.execute(raw_sql, race_id, text_blob)
         cnx.commit()

@@ -97,9 +97,7 @@ class Birkie2007OnParser(HTMLParser):
             self.race_results.append(self.current_race_result)
             self.in_data_row = False
         elif tag == "td" and self.in_data_row:
-            # todo, ascii re-encoding is lossy and a hack for easy writing to mysql
-            # todo sql sanitization does not belong here
-            clean_data = " ".join([x.strip().replace("'", "") for x in self.current_td_data]).encode("ascii", "ignore")
+            clean_data = " ".join(x.strip() for x in self.current_td_data)
             if self.td_count == 1:
                 self.current_race_result.place = clean_data
             elif self.td_count == 5:
@@ -400,4 +398,4 @@ def fetch_season(season):
 
 
 if __name__ == "__main__":
-    fetch_season("2014")
+    fetch_season("2009")

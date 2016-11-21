@@ -6,7 +6,6 @@ from configs import Configs
 from HTMLParser import HTMLParser
 import itiming_fetcher
 import mtec_fetcher
-from pdf_serializer import write_pdf_and_text
 from RaceResults import RaceInfo, UnstructuredRaceResults
 
 config = Configs()
@@ -72,13 +71,16 @@ class SkinnySkiRaceInfoParser(HTMLParser):
             self.current_element.name = self.current_name_starter + data
             self.first_anchor = False
 
-    def extractHref(self, attrs):
+    @staticmethod
+    def extract_href(self, attrs):
         for attr in attrs:
             if len(attr) == 2:
                 if attr[0] == 'href':
                     # handle relative addresses
                     if attr[1].startswith("/"):
                         return "%s%s" % (SKINNYSKI_URL, attr[1])
+                    else:
+                        return attr[1]
         return "nohrefattr"
 
 
@@ -213,5 +215,6 @@ def race_already_processed(race_info):
 
 if __name__ == "__main__":
     race_infos = get_race_infos("2014")
-    for i in range(0,10):
-        process_race(race_infos[i])
+    for i in range(0,100):
+        #process_race(race_infos[i])
+        print (race_infos[i])
