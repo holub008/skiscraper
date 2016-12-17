@@ -1,5 +1,5 @@
 from abc import ABCMeta, abstractmethod
-import HTMLParser
+from HTMLParser import HTMLParser
 import urllib2
 
 from RaceResults import RaceInfo, StructuredRaceResults, UnstructuredRaceResults
@@ -20,6 +20,7 @@ class SubdivisionParser(HTMLParser):
         self.event_race_info = race_info
 
         # since unstructured content include a race on the event landing page, we need to include the landing page :O
+        # todo this isn't always the case :(- need to validate that an id is present
         self.race_infos = [race_info]
         self.results_are_structured = True
 
@@ -37,12 +38,17 @@ class SubdivisionParser(HTMLParser):
         elif tag == "select" and SubdivisionParser.extract_attr(attrs, "id") == "otherracesselect":
             self.in_other_race_select = True
         elif tag == "option" and self.in_other_race_select:
-
             # todo if we have structured results, we need to handle this differently. these links just take you to another top level page
             # we need to parse out ids or do some post-processing in get_race_infos
             # in any event, the url should look like: http://www.mtecresults.com/race/quickResults?raceid=2866&version=1&overall=yes&offset=0&perPage=10000
             self.in_race_option = True
-            self.current_url = MTEC_BASE_URL + self.extract_attr(attrs, "href")
+
+            relative_path = self.extract_attr(attrs, "value")
+            if relative_path:
+                self.current_url = MTEC_BASE_URL + relative_path
+            else:
+                # todo logging & this will yield a shiesty raceinfo
+                print "Skipping mtec subdivision race due to no supplied url"
 
     def handle_data(self, data):
         if self.in_race_option:
@@ -55,7 +61,7 @@ class SubdivisionParser(HTMLParser):
             self.race_infos.append(self._generate_race_info())
             self.in_race_option = False
 
-    def get_result_infos(self):
+    def get_race_infos(self):
         if self.results_are_structured:
             # unstructured results always include a result page on the parent event :O
             return self.race_infos[1:]
@@ -71,7 +77,17 @@ class SubdivisionParser(HTMLParser):
         return None
 
 
-class StructuredResultParser(HTMLParser):
+class ResultParser:
+    __metaclass__ = ABCMeta
+
+    @abstractmethod
+    def get_race_results(self):
+        """
+        :return: get the parsed race results (list RaceResult)
+        """
+
+
+class StructuredResultParser(HTMLParser, ResultParser):
     """
     Parser for the case where we have a good race result summary
     """
@@ -89,8 +105,10 @@ class StructuredResultParser(HTMLParser):
     def handle_endtag(self, tag):
         pass
 
+    def get_race_results(self):
+        return []
 
-class UnstructuredResultParser(HTMLParser):
+class UnstructuredResultParser(HTMLParser, ResultParser):
     """
     unfortunately, some results are in plain text, and I don't believe I can depend on consistent
     headers across all mtex races (todo study this)
@@ -109,6 +127,10 @@ class UnstructuredResultParser(HTMLParser):
     def handle_endtag(self, tag):
         pass
 
+    def get_race_results(self):
+        return []
+
+
 def process_race(race_info):
     """
     process results on the mtec site. this method may spawn the creation of new race_info types.
@@ -117,30 +139,37 @@ def process_race(race_info):
     """
 
     response = urllib2.urlopen(race_info.url)
-    if not response.status.code == 200:
+    if not response.getcode() == 200:
         print("Unexpected response code from url (%s): %d. Unable to fetch mtec results." % (race_info.url, response.status_code))
         return
 
-    event_parser = SubdivisionParser()
-    event_parser.feed(response.text)
+    event_parser = SubdivisionParser(race_info)
+    event_parser.feed(response.read())
 
-    event_id = race_info.url[race_info.url.last.find("/"):]
     for sub_race_info in event_parser.get_race_infos():
+        event_id = sub_race_info.url[race_info.url.rfind("/"):]
 
         # todo I don't like "scoping" response and parser like this,
         if event_parser.results_are_structured:
             request_headers = {"Referrer" : REFERER_HEADER_FORMAT % (event_id, ),
                                "X-Requested-With" : REQUESTED_WITH_HEADER}
-            response = urllib2.urlopen(race_info.url, headers = request_headers)
+            response = urllib2.urlopen(urllib2.Request(race_info.url, headers=request_headers))
             race_parser = StructuredResultParser(sub_race_info)
         else:
             response = urllib2.urlopen(race_info.url)
             race_parser = UnstructuredResultParser(sub_race_info)
 
-        if not response.status_code == 200:
+        if not response.getcode() == 200:
             print "Failed to fetch unstructured results at url %s" % (race_info.url, )
             continue
 
-        race_parser.feed(response.text)
-        for race_result in race_parser.race_results:
+        print sub_race_info
+        #print response.read()
+
+        race_parser.feed(response.read())
+        for race_result in race_parser.get_race_results():
             race_result.serialize()
+
+if __name__ == "__main__":
+    r = RaceInfo("2015", "2015-01-01","http://www.mtecresults.com/race/show/3824/2016_City_of_Lakes_Loppet_Festival-Columbia_Sportswear_Skate","COLL")
+    process_race(r)
