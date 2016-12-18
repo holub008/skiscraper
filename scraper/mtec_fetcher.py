@@ -1,11 +1,14 @@
 from abc import ABCMeta, abstractmethod
 from HTMLParser import HTMLParser
+import re
 import urllib2
 
-from RaceResults import RaceInfo, StructuredRaceResults, UnstructuredRaceResults
+from RaceResults import RaceInfo, RaceResult, StructuredRaceResults, UnstructuredRaceResults
 
-MTEC_BASE_URL = "http://www.mtecresults.com/"
-REFERER_HEADER_FORMAT = MTEC_BASE_URL + "race/show/%s'" # expects the race id
+MTEC_BASE_URL = "http://www.mtecresults.com"
+
+MTEC_AJAX_URL =  MTEC_BASE_URL + "/race/quickResults?raceid=%s&version=63&overall=yes&offset=0&perPage=10000" # expects the race id
+REFERER_HEADER_FORMAT = MTEC_BASE_URL + "/race/show/%s'" # expects the race id
 REQUESTED_WITH_HEADER = "XMLHttpRequest"
 
 
@@ -20,7 +23,6 @@ class SubdivisionParser(HTMLParser):
         self.event_race_info = race_info
 
         # since unstructured content include a race on the event landing page, we need to include the landing page :O
-        # todo this isn't always the case :(- need to validate that an id is present
         self.race_infos = [race_info]
         self.results_are_structured = True
 
@@ -62,11 +64,7 @@ class SubdivisionParser(HTMLParser):
             self.in_race_option = False
 
     def get_race_infos(self):
-        if self.results_are_structured:
-            # unstructured results always include a result page on the parent event :O
-            return self.race_infos[1:]
-        else:
-            return self.race_infos
+        return self.race_infos
 
     @staticmethod
     def extract_attr(attrs, attr_name):
@@ -83,30 +81,70 @@ class ResultParser:
     @abstractmethod
     def get_race_results(self):
         """
-        :return: get the parsed race results (list RaceResult)
+        :return: get the parsed race results (RaceResults)
         """
 
 
 class StructuredResultParser(HTMLParser, ResultParser):
     """
     Parser for the case where we have a good race result summary
+    except it's not good because mtec does not see fit to close all it's <tr> tags...
     """
 
     def __init__(self, ri):
         HTMLParser.__init__(self)
         self.race_info = ri
 
+        self.race_results = []
+        self.current_data = [] # for handling multiline data...
+        self.current_race_result = RaceResult("", "", "")
+
+        self.in_thead = False
+        self.first_tr = True
+        self.td_count = 0
+
+
     def handle_starttag(self, tag, attrs):
-        pass
+        if tag == "thead":
+            self.in_thead = True
+        elif tag == "tr" and not self.in_thead:
+            self.in_tr = True
+            # since we have no closing tr tags, we must assume that a newly opened one indicates a prior closure
+            if self.first_tr:
+                self.first_tr = False
+            else:
+                # print self.current_race_result
+                self.race_results.append(self.current_race_result)
+                self.current_race_result = RaceResult("", "", "")
+
+                self.td_count = 0
+        elif tag == "td":
+            self.td_count += 1
 
     def handle_data(self, data):
-        pass
+        self.current_data.append(data.strip())
 
     def handle_endtag(self, tag):
-        pass
+        """
+        note that there are no useful closing tr tags in this data
+        """
+        if tag == "thead":
+            self.in_thead = False
+        elif tag == "td":
+            if self.td_count == 2:
+                self.current_race_result.name = self._get_current_data()
+            elif self.td_count == 7:
+                self.current_race_result.place = self._get_current_data()
+            elif self.td_count == 10:
+                self.current_race_result.time = self._get_current_data()
+            self.current_data = []
+
+    def _get_current_data(self):
+        return "".join(self.current_data)
 
     def get_race_results(self):
-        return []
+        return StructuredRaceResults(self.race_info, self.race_results)
+
 
 class UnstructuredResultParser(HTMLParser, ResultParser):
     """
@@ -118,6 +156,8 @@ class UnstructuredResultParser(HTMLParser, ResultParser):
         HTMLParser.__init__(self)
         self.race_info = ri
 
+        self.results = ""
+
     def handle_starttag(self, tag, attrs):
         pass
 
@@ -128,7 +168,20 @@ class UnstructuredResultParser(HTMLParser, ResultParser):
         pass
 
     def get_race_results(self):
-        return []
+        return UnstructuredRaceResults(self.race_info, self.results)
+
+
+def _get_id_from_url(url):
+    """
+    :param url: the race url to be parsed
+    :return: mtec id of the requested race (str, none if not present)
+    """
+    KEY = "race/show/"
+    key_regex = re.compile(KEY + "[0-9]+")
+    match = key_regex.search(url)
+    if match:
+        return match.group(0).lstrip(KEY)
+    return None
 
 
 def process_race(race_info):
@@ -147,28 +200,30 @@ def process_race(race_info):
     event_parser.feed(response.read())
 
     for sub_race_info in event_parser.get_race_infos():
-        event_id = sub_race_info.url[race_info.url.rfind("/"):]
 
-        # todo I don't like "scoping" response and parser like this,
-        if event_parser.results_are_structured:
-            request_headers = {"Referrer" : REFERER_HEADER_FORMAT % (event_id, ),
-                               "X-Requested-With" : REQUESTED_WITH_HEADER}
-            response = urllib2.urlopen(urllib2.Request(race_info.url, headers=request_headers))
-            race_parser = StructuredResultParser(sub_race_info)
+        event_id = _get_id_from_url(sub_race_info.url)
+        print event_id
+        if event_id:
+            # todo I don't like "scoping" response and parser like this,
+            if event_parser.results_are_structured:
+                request_headers = {"Referrer" : REFERER_HEADER_FORMAT % (event_id, ),
+                                   "X-Requested-With" : REQUESTED_WITH_HEADER}
+                response = urllib2.urlopen(urllib2.Request(MTEC_AJAX_URL % (event_id, ), headers=request_headers))
+                race_parser = StructuredResultParser(sub_race_info)
+            else:
+                response = urllib2.urlopen(sub_race_info.url)
+                race_parser = UnstructuredResultParser(sub_race_info)
+
+            if not response.getcode() == 200:
+                print "Failed to fetch results at url %s" % (race_info.url, )
+                continue
+
+            race_parser.feed(response.read())
+            race_parser.get_race_results().serialize()
+
         else:
-            response = urllib2.urlopen(race_info.url)
-            race_parser = UnstructuredResultParser(sub_race_info)
-
-        if not response.getcode() == 200:
-            print "Failed to fetch unstructured results at url %s" % (race_info.url, )
-            continue
-
-        print sub_race_info
-        #print response.read()
-
-        race_parser.feed(response.read())
-        for race_result in race_parser.get_race_results():
-            race_result.serialize()
+            # todo logging
+            print "Skipping mtec url due to no id: " + sub_race_info.url
 
 if __name__ == "__main__":
     r = RaceInfo("2015", "2015-01-01","http://www.mtecresults.com/race/show/3824/2016_City_of_Lakes_Loppet_Festival-Columbia_Sportswear_Skate","COLL")

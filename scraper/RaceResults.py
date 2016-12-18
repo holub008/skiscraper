@@ -161,17 +161,9 @@ class StructuredRaceResults(RaceResults):
         cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host="localhost")
         cursor = cnx.cursor()
         # first, write the race metadata to the race db
-        self.info.serialize(cursor, "structured")
+        race_id = self.info.serialize(cursor, "structured")
         cnx.commit()
 
-        # todo anything better, please!
-        raw_sql = "SELECT id from %s" % (RACE_DB,) + " WHERE rname=%s AND ryear=%s AND rurl=%s"
-        cursor.execute(raw_sql, (self.info.get_cleansed_name(), self.info.season, self.info.url))
-
-        ids = [id[0] for id in cursor]
-        if len(ids) > 1:
-            print("Warning: a race appears to have been entered into the race db more than once. Proceeding with highest id")
-        race_id = max(ids)
         # then insert the structured race results into the results db
         for race_result in self.results:
             race_result.serialize(cursor, race_id)
