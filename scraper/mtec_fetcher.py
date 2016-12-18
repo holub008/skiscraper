@@ -3,10 +3,11 @@ from HTMLParser import HTMLParser
 import re
 import urllib2
 
-from RaceResults import RaceInfo, RaceResult, StructuredRaceResults, UnstructuredRaceResults
+from RaceResults import RaceInfo, RaceResult, StructuredRaceResults, UnstructuredTextRaceResults
+
+TEXT_RESULT_DIV_CLASS = "racetextresults"
 
 MTEC_BASE_URL = "http://www.mtecresults.com"
-
 MTEC_AJAX_URL =  MTEC_BASE_URL + "/race/quickResults?raceid=%s&version=63&overall=yes&offset=0&perPage=10000" # expects the race id
 REFERER_HEADER_FORMAT = MTEC_BASE_URL + "/race/show/%s'" # expects the race id
 REQUESTED_WITH_HEADER = "XMLHttpRequest"
@@ -35,7 +36,7 @@ class SubdivisionParser(HTMLParser):
         return RaceInfo(self.event_race_info.season, self.event_race_info.date, self.current_url, "%s, %s" % (self.event_race_info.name, self.current_name))
 
     def handle_starttag(self, tag, attrs):
-        if tag == "div" and SubdivisionParser.extract_attr(attrs, "class") == "racetextresults":
+        if tag == "div" and SubdivisionParser.extract_attr(attrs, "class") == TEXT_RESULT_DIV_CLASS:
             self.results_are_structured = False
         elif tag == "select" and SubdivisionParser.extract_attr(attrs, "id") == "otherracesselect":
             self.in_other_race_select = True
@@ -63,6 +64,7 @@ class SubdivisionParser(HTMLParser):
             self.race_infos.append(self._generate_race_info())
             self.in_race_option = False
 
+    # todo filter out garbage / repeated races
     def get_race_infos(self):
         return self.race_infos
 
@@ -113,7 +115,6 @@ class StructuredResultParser(HTMLParser, ResultParser):
             if self.first_tr:
                 self.first_tr = False
             else:
-                # print self.current_race_result
                 self.race_results.append(self.current_race_result)
                 self.current_race_result = RaceResult("", "", "")
 
@@ -156,20 +157,33 @@ class UnstructuredResultParser(HTMLParser, ResultParser):
         HTMLParser.__init__(self)
         self.race_info = ri
 
-        self.results = ""
+        # list for handling multiple
+        self.results = []
+
+        self.in_result_div = False
 
     def handle_starttag(self, tag, attrs):
-        pass
+        if tag == "div" and UnstructuredResultParser.extract_attr(attrs, "class") == TEXT_RESULT_DIV_CLASS:
+            self.in_result_div = True
 
     def handle_data(self, data):
-        pass
+        if self.in_result_div:
+            self.results.append(data)
 
     def handle_endtag(self, tag):
-        pass
+        if tag == "div":
+            self.in_result_div = False
 
     def get_race_results(self):
-        return UnstructuredRaceResults(self.race_info, self.results)
+        return UnstructuredTextRaceResults(self.race_info, "\n".join(self.results))
 
+    @staticmethod
+    def extract_attr(attrs, attr_name):
+        for attr_pair in attrs:
+            if len(attr_pair) == 2:
+                if attr_pair[0] == attr_name:
+                    return attr_pair[1]
+        return None
 
 def _get_id_from_url(url):
     """
@@ -202,7 +216,6 @@ def process_race(race_info):
     for sub_race_info in event_parser.get_race_infos():
 
         event_id = _get_id_from_url(sub_race_info.url)
-        print event_id
         if event_id:
             # todo I don't like "scoping" response and parser like this,
             if event_parser.results_are_structured:
@@ -227,4 +240,6 @@ def process_race(race_info):
 
 if __name__ == "__main__":
     r = RaceInfo("2015", "2015-01-01","http://www.mtecresults.com/race/show/3824/2016_City_of_Lakes_Loppet_Festival-Columbia_Sportswear_Skate","COLL")
+    process_race(r)
+    r = RaceInfo("2011", "2011-01-01", "http://www.mtecresults.com/race/show/250/2011_Mora_Vasaloppet-58K_Freestyle", "Mora Vasaloppet")
     process_race(r)

@@ -42,7 +42,8 @@ def write_pdf_and_text(pdf_content, race_id):
     handle = subprocess.Popen([PDF_TO_TEXT, path_fname_ext, txt_dest_ext], stdout = subprocess.PIPE)
     handle.wait() # block until file is written
     if not handle.returncode == 0:
-        print "Warning: PDF to text returned with exit code %d." % (handle.returncode,)
+        print "Warning: PDF to text returned with exit code %d. This likely indicates a pdf encoding issue." % (handle.returncode,)
+        return None
 
     with file(txt_dest_ext, "r") as text_file:
         return text_file.read()

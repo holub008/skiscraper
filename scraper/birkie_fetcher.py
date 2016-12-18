@@ -4,8 +4,7 @@ import mysql.connector
 import urllib2
 
 from configs import Configs
-import pdf_serializer
-from RaceResults import RaceResult, StructuredRaceResults, RaceInfo, UnstructuredRaceResults
+from RaceResults import RaceResult, StructuredRaceResults, RaceInfo, UnstructuredPDFRaceResults
 
 config = Configs()
 DB_USER = config.get_as_string("DB_USER")
@@ -375,7 +374,7 @@ def handlePre2007Season(season):
             continue
 
         if response.getcode() == 200:
-            UnstructuredRaceResults(race_info, response.read()).serialize()
+            UnstructuredPDFRaceResults(race_info, response.read()).serialize()
 
     cnx.commit()
     cnx.close()
