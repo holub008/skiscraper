@@ -27,10 +27,11 @@ class RaceInfo:
         :param u: url (str)
         :param n: race name (str)
         """
-        self.season = s
-        self.date = d
-        self.url = u
-        self.name = n
+        # todo I think these are naughtily mutated
+        self.season = unicode(s)
+        self.date = unicode(d)
+        self.url = unicode(u)
+        self.name = unicode(n)
 
     @staticmethod
     def create_empty(s):

@@ -6,7 +6,7 @@ from configs import Configs
 from HTMLParser import HTMLParser
 import itiming_fetcher
 import mtec_fetcher
-from RaceResults import RaceInfo, UnstructuredRaceResults
+from RaceResults import RaceInfo, UnstructuredPDFRaceResults
 
 config = Configs()
 SKINNYSKI_URL = config.get_as_string("RESULTS_URL")
@@ -44,7 +44,7 @@ class SkinnySkiRaceInfoParser(HTMLParser):
             self.first = True
             self.current_name_starter = ""
         elif tag == 'a' and self.first_anchor:
-            self.current_element.url = self.extractHref(attrs)
+            self.current_element.url = SkinnySkiRaceInfoParser.extract_href(attrs)
             # leave first_anchor true so that we may extract the race name (contained in the data)
 
     def handle_endtag(self, tag):
@@ -72,7 +72,7 @@ class SkinnySkiRaceInfoParser(HTMLParser):
             self.first_anchor = False
 
     @staticmethod
-    def extract_href(self, attrs):
+    def extract_href(attrs):
         for attr in attrs:
             if len(attr) == 2:
                 if attr[0] == 'href':
@@ -116,9 +116,8 @@ def handle_pdf(race_info):
     """
     pdf_content = get_skinnyski_pdf(race_info)
     if pdf_content:
-        results = UnstructuredRaceResults(race_info, pdf_content)
+        results = UnstructuredPDFRaceResults(race_info, pdf_content)
         results.serialize()
-
     else:
         print("Warning: skipping a pdf which was unable to be accessed")
 
@@ -159,7 +158,7 @@ def process_race(race_info):
         elif is_mtec_hosted(race_info):
             mtec_fetcher.process_race(race_info)
         elif is_itiming_hosted(race_info):
-            itiming_fetcher.process_race(race_info)
+            itiming_fetcher.process_race_from_landing(race_info)
         else:
             handle_nonpdf(race_info)
 
@@ -197,9 +196,7 @@ def get_race_infos(season):
 
 
 def race_already_processed(race_info):
-    # todo move to utility class for recycling!- use for birkie fetcher
-    # ensure that the parser found all the race properties
-    # if we don't make this entry in the db, the race will simply never be searched
+    # todo move to RaceInfo object- probably want a RaceInfoStore
     if race_info.name and race_info.url and race_info.date:
         # todo only one connection
         cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host="localhost")

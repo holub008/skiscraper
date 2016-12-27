@@ -12,10 +12,10 @@ DROP TABLE IF EXISTS skiscraper.races;
 CREATE TABLE skiscraper.races
 (
     id INT NOT NULL AUTO_INCREMENT,
-    rname VARCHAR(128),
-    rdate VARCHAR(32),  -- todo
-    ryear VARCHAR(16),
-    rurl VARCHAR(512),
+    rname VARCHAR(128) COLLATE utf8_unicode_ci,
+    rdate VARCHAR(32) COLLATE utf8_unicode_ci,  -- todo
+    ryear VARCHAR(16) COLLATE utf8_unicode_ci,
+    rurl VARCHAR(512) COLLATE utf8_unicode_ci,
     result_type VARCHAR(16),
     PRIMARY KEY(id)
 );
@@ -25,9 +25,9 @@ CREATE TABLE skiscraper.structured_race_results
 (
     id INT NOT NULL AUTO_INCREMENT,
     race_id INT NOT NULL,
-    name VARCHAR(512),
-    placement VARCHAR(16),
-    race_time VARCHAR(32),
+    name VARCHAR(512) COLLATE utf8_unicode_ci,
+    placement VARCHAR(16) COLLATE utf8_unicode_ci,
+    race_time VARCHAR(32) COLLATE utf8_unicode_ci,
     PRIMARY KEY(id)
 );
 
@@ -36,7 +36,7 @@ CREATE TABLE skiscraper.unstructured_race_results
 (
     id INT NOT NULL AUTO_INCREMENT,
     race_id INT NOT NULL,
-    text_blob TEXT,
+    text_blob TEXT COLLATE utf8_unicode_ci,
     PRIMARY KEY(id)
 );
 

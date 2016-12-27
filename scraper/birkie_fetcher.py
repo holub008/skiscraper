@@ -386,10 +386,10 @@ def fetch_season(season):
     :param season: the season we are getting results for (str)
     :return: void
     """
-
-    if season >= "2013":
+    season_int = int(season)
+    if season_int >= 2013:
         handle2014On(season)
-    elif season >= "2007":
+    elif season >= 2007:
         handle2007To2015(season)
     else:
         # attempt to find unstructured results on the main results pages

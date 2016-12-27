@@ -29,11 +29,11 @@ class SubdivisionParser(HTMLParser):
 
         self.in_other_race_select = False
         self.in_race_option = False
-        self.current_name = ""
+        self.current_name = u""
         self.current_url = ""
 
     def _generate_race_info(self):
-        return RaceInfo(self.event_race_info.season, self.event_race_info.date, self.current_url, "%s, %s" % (self.event_race_info.name, self.current_name))
+        return RaceInfo(self.event_race_info.season, self.event_race_info.date, self.current_url, u"{}, {}".format(self.event_race_info.name, self.current_name))
 
     def handle_starttag(self, tag, attrs):
         if tag == "div" and SubdivisionParser.extract_attr(attrs, "class") == TEXT_RESULT_DIV_CLASS:
@@ -55,7 +55,7 @@ class SubdivisionParser(HTMLParser):
 
     def handle_data(self, data):
         if self.in_race_option:
-            self.current_name = data
+            self.current_name = data.decode('utf-8')
 
     def handle_endtag(self, tag):
         if tag == "select":
