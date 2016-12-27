@@ -37,8 +37,10 @@ class ITimingHTMLParser(HTMLParser):
 
     def handle_data(self, data):
         # not sure how consistent this magic string is- may need to do "rough" comparison
-        if self.in_anchor and data == "Searchable Results with Leaderboard":
+        if self.in_anchor and "searchable" in data.lower():
             self.event_url = self.current_href
+        # todo printable -> unstructured results
+        # ex http://www.itiming.com/html/raceresults.php?year=2016&EventId=1324&eventype=0
 
     def handle_endtag(self, tag):
         if tag.lower() == "a":
