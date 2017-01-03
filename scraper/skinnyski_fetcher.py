@@ -146,19 +146,20 @@ def handle_nonpdf(race_info):
     pass
 
 
-def process_race(race_info):
+def process_race(race_info, race_store):
     """
     determine how to handle this race and process accordingly
     :param race_info: race metadata (RaceInfo)
+    :param race_store: existing races in the race db (RaceResultStore)
     :return: void
     """
     if race_info.url:
         if is_pdf(race_info):
             handle_pdf(race_info)
         elif is_mtec_hosted(race_info):
-            mtec_fetcher.process_race(race_info)
+            mtec_fetcher.process_race(race_info, race_store)
         elif is_itiming_hosted(race_info):
-            itiming_fetcher.process_race_from_landing(race_info)
+            itiming_fetcher.process_race_from_landing(race_info, race_store)
         else:
             handle_nonpdf(race_info)
 
@@ -193,22 +194,6 @@ def get_race_infos(season):
         # TODO logging
         print("Error: failed to connect to skinnyski: %s" % r.reason)
         return []
-
-
-def race_already_processed(race_info):
-    # todo move to RaceInfo object- probably want a RaceInfoStore
-    if race_info.name and race_info.url and race_info.date:
-        # todo only one connection
-        cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host="localhost")
-        cursor = cnx.cursor()
-        raw_sql = "SELECT COUNT(*) FROM %s" % (RACE_DB,) + " WHERE rname=%s and ryear=%s and rurl=%s"
-        cursor.execute(raw_sql, (race_info.get_cleansed_name(), race_info.season, race_info.url))
-        count = int(next(cursor)[0])
-        cnx.close()
-        return count > 0
-    else:
-        print "Found a race with a null name/url/date. Always will reprocess by default."
-        return False
 
 if __name__ == "__main__":
     race_infos = get_race_infos("2014")

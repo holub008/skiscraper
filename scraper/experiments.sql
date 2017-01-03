@@ -9,6 +9,8 @@ GRANT ALL PRIVILEGES ON skiscraper.* TO 'scraper'@'localhost';
 GRANT READ PRIVILEGES ON skiscraper.* TO 'web'@'localhost';
 
 DROP TABLE IF EXISTS skiscraper.races;
+-- todo it may be a good idea to have 1. an event table that may have sub-races 2. an extra column here pointing to any parent races (i.e. events)
+-- this will make it easier (actually, just fewer requests) to determine if a race has already been processed in advance
 CREATE TABLE skiscraper.races
 (
     id INT NOT NULL AUTO_INCREMENT,

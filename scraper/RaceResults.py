@@ -194,6 +194,7 @@ class UnstructuredPDFRaceResults(RaceResults):
         cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host="localhost")
         cursor = cnx.cursor()
         # first, write the race metadata to the race db
+        # todo constants for result type
         race_id = self.info.serialize(cursor, "unstructured")
 
         # because I'm not sure mysql is the right tool for storing enormous strings, might still need to use the file
@@ -230,6 +231,7 @@ class UnstructuredTextRaceResults(RaceResults):
         cnx = mysql.connector.connect(user=DB_USER, password=DB_PASSWORD, host="localhost")
         cursor = cnx.cursor()
         # first, write the race metadata to the race db
+        # todo constants for result type
         race_id = self.info.serialize(cursor, "unstructured")
 
         raw_sql = "INSERT INTO " + UNSTRUCTURED_RESULTS_DB + " (race_id, text_blob) VALUES (%s, %s)"

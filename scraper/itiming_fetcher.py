@@ -134,11 +134,13 @@ def process_chronotrack_race(race_info):
         # todo logging
         print("Unexpected response (%d) in getting individual results from chronotrack url: %s" % (response.getcode(), race_info.url))
 
-def process_events(event_race_info, event_url):
+
+def process_events(event_race_info, event_url, race_store):
     """
     process results on the itiming site. this method may spawn the creation of new race_info types.
     :param event_race_info: race metadata (RaceInfo)
     :param event_url: url for the chronotrack event
+    :param race_store: store of all currently processed races (RaceResultStore)
     :return: void
     """
     event_id = get_event_id_from_url(event_url)
@@ -152,7 +154,11 @@ def process_events(event_race_info, event_url):
             race_name = "%s - %s" % (event_race_info.name, race_pair[1], )
             race_info = RaceInfo(event_race_info.season, event_race_info.date, chronotrack_race_url, race_name)
 
-            process_chronotrack_race(race_info)
+            if race_info in race_store:
+                # todo logging
+                print "Skipping the processing of itiming race (%s) because it was already processed." %(race_info)
+            else:
+                process_chronotrack_race(race_info)
 
         if race_count < 1:
             # todo logging
@@ -163,10 +169,11 @@ def process_events(event_race_info, event_url):
         return
 
 
-def process_race_from_landing(race_info):
+def process_race_from_landing(race_info, race_store):
     """
     process results on the itiming site, starting potentially from the landing page in race_info.url
     :param race_info: race metadata (RaceInfo)
+    :param race_store: store of all currently processed races (RaceResultStore)
     :return: void
     """
 
@@ -181,7 +188,7 @@ def process_race_from_landing(race_info):
 
     event_url = parser.get_event_url()
     if event_url:
-        process_events(race_info, event_url)
+        process_events(race_info, event_url, race_store)
     else:
         # todo logging
         print("Failed to find results page for itiming url: " + race_info.url)

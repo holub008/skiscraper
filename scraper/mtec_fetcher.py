@@ -198,10 +198,11 @@ def _get_id_from_url(url):
     return None
 
 
-def process_race(race_info):
+def process_race(race_info, race_store):
     """
     process results on the mtec site. this method may spawn the creation of new race_info types.
     :param race_info: race metadata (RaceInfo)
+    :param race_store: collection of races existing in the race db
     :return: void
     """
 
@@ -214,6 +215,10 @@ def process_race(race_info):
     event_parser.feed(response.read())
 
     for sub_race_info in event_parser.get_race_infos():
+        if sub_race_info in race_store:
+            # todo logging
+            print "Skipping the processing of mtec race (%s) because it already exists in the race store" % (sub_race_info,)
+            continue
 
         event_id = _get_id_from_url(sub_race_info.url)
         if event_id:

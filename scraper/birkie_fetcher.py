@@ -17,6 +17,8 @@ BASE_URL_FORMAT_2014ON = "http://birkie.pttiming.com/results/%d/index.php?page=1
 URL_PREFETCH_2007ON = "http://results.birkie.com"
 # yikes! this will spit raw sql errors if you supply malformed queries
 BASE_URL_FORMAT_2007ON = "http://results.birkie.com/index.php?event_id=%s&page_number=%s"
+URL_2007ON_DB_URL_PAGE = 0
+URL_2014ON_DB_DIV_ID = 0
 URL_PREFETCH_PRE2007 = "http://www.birkie.com/ski/events/birkie/results/"
 
 # todo this is dynamic
@@ -239,15 +241,25 @@ class BirkiePre2007Prefetcher(HTMLParser):
         # todo this requires more tuning!
         return "age" not in href.lower()
 
-def handle2014On(season):
-    """
 
+def handle2014On(season, race_store):
+    """
     :param season: the season of the race we want. note Birkies are in Feb, so they are a year ahead (str)
+    :param race_store: store of all currently processed races (RaceResultStore)
     :return: void
     """
     year = int(season) + 1
 
     for div_ix, div in enumerate(RACES):
+        # todo get date of race
+        url_for_db = BASE_URL_FORMAT_2014ON % (year, URL_2007ON_DB_URL_PAGE, URL_2014ON_DB_DIV_ID)
+        race_info = RaceInfo(season, str(year), url_for_db, "%s %s" % (BIRKIE_RACE_NAME, div))
+
+        if race_info in race_store:
+            # todo logging
+            print("Skipping race (%s) that has already been processed." % (race_info, ))
+            continue
+
         total_results = []
         page = 0
         # page size defaults to 100, if smaller, we've reached the end
@@ -276,19 +288,17 @@ def handle2014On(season):
                 current_page_size = 0
             page += 1
 
-        # todo get date of race
-        url_for_db = BASE_URL_FORMAT_2014ON % (year, 0, div_id)
-        race_info = RaceInfo(season, str(year), url_for_db, "%s %s" % (BIRKIE_RACE_NAME, div))
         race = StructuredRaceResults(race_info, total_results)
         race.serialize()
 
 
-def handle2007To2015(season):
+def handle2007To2015(season, race_store):
     """
     structured results are available through a different api 2007-2015
     todo merge like components with the 2014On fetcher- very similar (parser is the exact same...)
-    :param season:
-    :return:
+    :param season: the season of the race (str)
+    :param race_store: store of all currently processed races (RaceResultStore)
+    :return: void
     """
     year = str(int(season) + 1)
 
@@ -308,6 +318,14 @@ def handle2007To2015(season):
     # now we can fetch the results for the given ids
     for ix, race_id in enumerate(prefetch_parser.event_ids):
         race_name = prefetch_parser.event_names[ix]
+        # todo get actual date of the race
+        url_for_db = BASE_URL_FORMAT_2007ON % (race_id, URL_2007ON_DB_URL_PAGE)
+        race_info = RaceInfo(season, str(year), url_for_db, race_name)
+        if race_info in race_store:
+            # todo logging
+            print("Skipping race (%s) that has already been processed." % (race_info))
+            continue
+
         total_results = []
         # indexed from 1 here for some reason
         page = 1
@@ -334,16 +352,14 @@ def handle2007To2015(season):
                 current_page_size = 0
             page +=1
 
-        # todo get actual date of the race
-        url_for_db = BASE_URL_FORMAT_2007ON % (race_id, page)
-        race_info = RaceInfo(season, str(year), url_for_db, race_name)
         race = StructuredRaceResults(race_info, total_results)
         race.serialize()
 
-def handlePre2007Season(season):
+def handlePre2007Season(season, race_store):
     """
     attempt to find unstructured results on the main results page where some pdfs reside
     :param season: season the race took place, probably a year less than the race you are interested in (str)
+    :param race_store: store of all currently processed races (RaceResultStore)
     :return: void
     """
     year = str(int(season) + 1)
@@ -367,6 +383,10 @@ def handlePre2007Season(season):
         url = prefetch_parser.race_urls[ix]
         race_info = RaceInfo(season, year, url, race_name)
 
+        if race_info in race_store:
+            # todo logging
+            print("Skipping processing of a race (%s) that has already been processed" % (race_info,))
+            continue
         try:
             response = urllib2.urlopen(url)
         except Exception as e:
@@ -375,25 +395,29 @@ def handlePre2007Season(season):
 
         if response.getcode() == 200:
             UnstructuredPDFRaceResults(race_info, response.read()).serialize()
+        else:
+            # todo logging
+            print("Unexpected return code (%d) for url (%s). Skipping..." % (response.getcode(), url, ))
 
     cnx.commit()
     cnx.close()
 
 
-def fetch_season(season):
+def fetch_season(season, race_store):
     """
     results are stored differently for different years.
     :param season: the season we are getting results for (str)
+    :param race_store: store of all currently processed races (RaceResultStore)
     :return: void
     """
     season_int = int(season)
     if season_int >= 2013:
-        handle2014On(season)
+        handle2014On(season, race_store)
     elif season >= 2007:
-        handle2007To2015(season)
+        handle2007To2015(season, race_store)
     else:
         # attempt to find unstructured results on the main results pages
-        handlePre2007Season(season)
+        handlePre2007Season(season, race_store)
 
 
 if __name__ == "__main__":
