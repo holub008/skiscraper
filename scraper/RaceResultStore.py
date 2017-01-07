@@ -19,16 +19,17 @@ class RaceResultStore:
         todo exception handling and avoid connection leak
         :return: a collection of race infos we know about (Set<RaceInfo>)
         """
-        race_table = config.get_as_string("RACE_DB")
+        race_table = self.config.get_as_string("RACE_DB")
 
         cnx = mysql.connector.connect(user=self.config.get_as_string("DB_USER"), password=self.config.get_as_string("DB_PASSWORD"), host="localhost")
         cursor = cnx.cursor()
 
-        raw_sql = "SELECT rseason, rdate, rurl, rname from %s" % (race_table, )
+        raw_sql = "SELECT ryear, rdate, rurl, rname from %s" % (race_table, )
         cursor.execute(raw_sql)
 
         current_race_infos = set()
         for row in cursor:
+            print RaceInfo(*row)
             current_race_infos.add(RaceInfo(*row))
 
         cnx.close()

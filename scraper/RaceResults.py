@@ -57,10 +57,8 @@ class RaceInfo:
         elif date_with_month.month not in (11, 12):
             print "Error: unexpected season (%s) / month (%s) combination encountered" % (self.season, date_with_month.month)
 
-        self.date = datetime.strptime("%s.%s" % (self.season, day), '%Y.%b.%d')
-
-    def get_cleansed_name(self):
-        return self.name.replace("/", "").replace(";", "").replace(",", "").replace("'", "")
+        race_date = datetime.strptime("%s.%s" % (self.season, day), '%Y.%b.%d')
+        self.date = datetime.strftime(race_date, '%Y.%m.%d')
 
     def serialize(self, cursor, result_type):
         """
@@ -86,11 +84,23 @@ class RaceInfo:
                 return -1
 
     def __str__(self):
-        return "<date:%s, URL:%s, name:%s>" % (self.season, self.url, self.name,)
+        return "<season: %s, date:%s, URL:%s, name:%s>" % (self.season, self.date, self.url, self.name,)
 
     def __repr__(self):
         return "%s||%s||%s" % (self.season, self.url, self.name,)
 
+    def __eq__(self, other):
+        # todo test if url is necessary (hint, it shouldn't be)
+        return self.season == other.season and self.date == other.date and self.name == other.name
+
+    def __ne__(self, other):
+        """
+            ugh, why does this need to exist...
+        """
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash(hash(self.season) + hash(self.date) + hash(self.name))
 
 class RaceResult:
     """

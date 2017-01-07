@@ -1,4 +1,4 @@
-import mysql.connector
+import re
 import requests
 import urllib2
 
@@ -92,22 +92,35 @@ def is_pdf(race_info):
     return race_info.url.endswith(".pdf")
 
 
+def is_skinnyski_hosted(race_info):
+    """
+    :param race_info: the race metadata to be inspected (RaceInfo)
+    :return: if the given race is hosted plain text
+    """
+    ss_re = re.compile(".*skinnyski\.com/racing/display\.asp.*")
+    match = ss_re.search(race_info.url)
+
+    return match is not None
+
 def is_mtec_hosted(race_info):
     """
     :param race_info: the race metadata to be inspected (RaceInfo)
-    :return: if the given race is hosted on mtec.com (bool)
+    :return: if the given race is hosted plain text
     """
-    # todo regex
-    return "mtec" in race_info.url
+    ss_re = re.compile(".*mtec\.com.*")
+    match = ss_re.search(race_info.url)
 
+    return match is not None
 
 def is_itiming_hosted(race_info):
     """
     :param race_info:  the race metadata to be inspected (RaceInfo)
     :return: if the given race is hosted on itiming.com
     """
-    # todo regex
-    return "itiming" in race_info.url
+    ss_re = re.compile(".*itiming\.com.*")
+    match = ss_re.search(race_info.url)
+
+    return match is not None
 
 def handle_pdf(race_info):
     """
@@ -138,11 +151,11 @@ def get_skinnyski_pdf(race_info):
         return None
 
 
-def handle_nonpdf(race_info):
+def handle_unrecognized(race_info):
     """
         attempt to find result sets on sites where the link is not direct to a doc
     """
-    print("TODO nonpdf")
+    print("TODO nonpdf: %s" % (race_info.url,))
     pass
 
 
@@ -156,12 +169,14 @@ def process_race(race_info, race_store):
     if race_info.url:
         if is_pdf(race_info):
             handle_pdf(race_info)
+        elif is_skinnyski_hosted(race_info):
+            pass # todo this is the most frequent race type (unstructured)
         elif is_mtec_hosted(race_info):
             mtec_fetcher.process_race(race_info, race_store)
         elif is_itiming_hosted(race_info):
             itiming_fetcher.process_race_from_landing(race_info, race_store)
         else:
-            handle_nonpdf(race_info)
+            handle_unrecognized(race_info)
 
     else:
         # todo logging
