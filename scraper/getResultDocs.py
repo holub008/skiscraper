@@ -10,7 +10,8 @@ config = Configs()
 history_years = config.get_as_int("HISTORY_LENGTH")
 # SEASONS = [str(datetime.date.today().year - year_delta) for year_delta in range(1, history_years)]
 SEASONS = ['2015']
-DIVISIONS = {"highschool":config.get_as_string("HS_DIVISION"), "citizen":config.get_as_string("CITIZEN_DIVISION")}
+#DIVISIONS = {"highschool":config.get_as_string("HS_DIVISION"), "citizen":config.get_as_string("CITIZEN_DIVISION")}
+DIVISIONS = {"citizen":config.get_as_string("CITIZEN_DIVISION")}
 race_store = RaceResultStore()
 ######################
 # start control flow

@@ -6,7 +6,7 @@ from configs import Configs
 from HTMLParser import HTMLParser
 import itiming_fetcher
 import mtec_fetcher
-from RaceResults import RaceInfo, UnstructuredPDFRaceResults
+from RaceResults import RaceInfo, UnstructuredPDFRaceResults, UnstructuredTextRaceResults
 
 config = Configs()
 SKINNYSKI_URL = config.get_as_string("RESULTS_URL")
@@ -20,6 +20,7 @@ RACE_DB = config.get_as_string("RACE_DB")
 #
 # todo create a prefetcher to generate RaceInfos, as in birkie_fetcher
 ######################################
+
 
 class SkinnySkiRaceInfoParser(HTMLParser):
     """
@@ -85,12 +86,43 @@ class SkinnySkiRaceInfoParser(HTMLParser):
         return "nohrefattr"
 
 
+class SkinnySkiUnstructuredRaceResultParser(HTMLParser):
+    """
+    scrape unstructured text results hosted on skinnyski
+    ugh, want to use BeautifulSoup but don't want to add the dependency
+    """
+
+    def __init__(self):
+        HTMLParser.__init__(self)
+
+        self.table_depth = 0
+        self.table_count = 0 # count at depth = 0
+        self.results = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "table":
+            if self.table_depth == 0:
+                self.table_count += 1
+            self.table_depth += 1
+
+    def handle_endtag(self, tag):
+        if tag == "table":
+            self.table_depth -= 1
+
+    def handle_data(self, data):
+        if self.table_count == 2 and self.table_depth == 3:
+            self.results.append(data)
+
+    def getTextResults(self):
+        return "\n".join(self.results).strip()
+
+
 def is_pdf(race_info):
     """
     :param race_info: the race metadata to be inspected (RaceInfo)
     :return: if the indicated url is a pdf (bool)
     """
-    return race_info.url.endswith(".pdf")
+    return race_info.url.rstrip("/").endswith(".pdf")
 
 
 def is_skinnyski_hosted(race_info):
@@ -103,6 +135,7 @@ def is_skinnyski_hosted(race_info):
 
     return match is not None
 
+
 def is_mtec_hosted(race_info):
     """
     :param race_info: the race metadata to be inspected (RaceInfo)
@@ -112,6 +145,7 @@ def is_mtec_hosted(race_info):
     match = ss_re.search(race_info.url)
 
     return match is not None
+
 
 def is_itiming_hosted(race_info):
     """
@@ -123,19 +157,36 @@ def is_itiming_hosted(race_info):
 
     return match is not None
 
-def handle_pdf(race_info):
+
+def handle_skinnyski_pdf(race_info):
     """
     :param race_info: race metadata (RaceInfo)
     :return: void
     """
-    pdf_content = get_skinnyski_pdf(race_info)
+    pdf_content = get_skinnyski_content(race_info)
     if pdf_content:
         results = UnstructuredPDFRaceResults(race_info, pdf_content)
         results.serialize()
     else:
         print("Warning: skipping a pdf which was unable to be accessed")
 
-def get_skinnyski_pdf(race_info):
+
+def handle_skinnyski_text(race_info):
+    """
+    :param race_info: race metadata (RaceInfo)
+    :return: void
+    """
+    raw_html = get_skinnyski_content(race_info)
+    if raw_html:
+        parser = SkinnySkiUnstructuredRaceResultParser()
+        parser.feed(raw_html)
+
+        UnstructuredTextRaceResults(race_info, parser.getTextResults()).serialize()
+    else:
+        print("Warning: skipping a skinnyski text race which was unable to be accessed")
+
+
+def get_skinnyski_content(race_info):
     """
     :param race_info: metadata about the race (RaceInfo)
     :return: race results fetched from online. returns None if a problem occurred
@@ -169,9 +220,9 @@ def process_race(race_info, race_store):
     """
     if race_info.url:
         if is_pdf(race_info):
-            handle_pdf(race_info)
+            handle_skinnyski_pdf(race_info)
         elif is_skinnyski_hosted(race_info):
-            pass # todo this is the most frequent race type (unstructured)
+            handle_skinnyski_text(race_info)
         elif is_mtec_hosted(race_info):
             mtec_fetcher.process_race(race_info, race_store)
         elif is_itiming_hosted(race_info):
@@ -212,7 +263,5 @@ def get_race_infos(season, division):
         return []
 
 if __name__ == "__main__":
-    race_infos = get_race_infos("2014")
-    for i in range(0,100):
-        #process_race(race_infos[i])
-        print (race_infos[i])
+    info = RaceInfo("2016", "103", "2016-01-07", "http://www.skinnyski.com/racing/display.asp?Id=35835", "Elm Creek Series Test")
+    handle_skinnyski_text(info)
