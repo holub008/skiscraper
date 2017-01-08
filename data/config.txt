@@ -14,3 +14,8 @@ UNSTRUCTURED_RESULTS_DB,skiscraper.unstructured_race_results
 
 # absolute path to pdftotext utility
 PDF_TO_TEXT,/usr/local/bin/pdftotext
+
+#divisions
+HS_DIVISION,103
+COLLEGE_DIVISION,102
+CITIZEN_DIVISION,103

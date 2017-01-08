@@ -25,13 +25,14 @@ class SkinnySkiRaceInfoParser(HTMLParser):
     """
         a subclass of HTMLParser to override tag/data handlers
     """
-    def __init__(self, season):
+    def __init__(self, season, division):
         # since we're overriding the init member function of HTMLParser, need to run superclass's init
         HTMLParser.__init__(self)
         self.elements = []
-        self.current_element = RaceInfo.create_empty(season)
+        self.current_element = RaceInfo.create_empty(season, division)
         self.current_name_starter = ""
         self.season = season
+        self.division = division
 
         # so that we can grab the first data element, the date
         self.first = False
@@ -51,7 +52,7 @@ class SkinnySkiRaceInfoParser(HTMLParser):
         if tag == 'li':
             self.elements.append(self.current_element)
             self.first_anchor = True
-            self.current_element = RaceInfo.create_empty(self.season)
+            self.current_element = RaceInfo.create_empty(self.season, self.division)
         elif tag == 'a':
             self.first_anchor = False
 
@@ -183,19 +184,19 @@ def process_race(race_info, race_store):
         print "Error: URL is not present"
 
 
-def get_race_infos(season):
+def get_race_infos(season, division):
     """
         get the list of URLs to results for the year
     """
     url = "%s/racing/results/default.asp" % (SKINNYSKI_URL, )
-    r = requests.post(url, data={"season": str(season)})
+    r = requests.post(url, data={"season": season, "cat": division})
 
     # hacky and at the mercy of skinnyski page design changes... nm we're okay :)
     if r.status_code == 200:
         # simplify the parser's work by cutting down the html to a a bunch of lists
         link_list = r.text[r.text.index("<ul>") + 4:r.text.index("</ul>")]
 
-        parser = SkinnySkiRaceInfoParser(season)
+        parser = SkinnySkiRaceInfoParser(season, division)
         try:
             parser.feed(link_list)
         except Exception as e:

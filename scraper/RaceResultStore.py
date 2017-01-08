@@ -24,7 +24,7 @@ class RaceResultStore:
         cnx = mysql.connector.connect(user=self.config.get_as_string("DB_USER"), password=self.config.get_as_string("DB_PASSWORD"), host="localhost")
         cursor = cnx.cursor()
 
-        raw_sql = "SELECT ryear, rdate, rurl, rname from %s" % (race_table, )
+        raw_sql = "SELECT ryear, division, rdate, rurl, rname from %s" % (race_table, )
         cursor.execute(raw_sql)
 
         current_race_infos = set()

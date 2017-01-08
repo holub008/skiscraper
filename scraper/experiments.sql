@@ -19,6 +19,7 @@ CREATE TABLE skiscraper.races
     ryear VARCHAR(16) COLLATE utf8_unicode_ci,
     rurl VARCHAR(512) COLLATE utf8_unicode_ci,
     result_type VARCHAR(16),
+    division VARCHAR(32),
     PRIMARY KEY(id)
 );
 

@@ -33,7 +33,7 @@ class SubdivisionParser(HTMLParser):
         self.current_url = ""
 
     def _generate_race_info(self):
-        return RaceInfo(self.event_race_info.season, self.event_race_info.date, self.current_url, u"{}, {}".format(self.event_race_info.name, self.current_name))
+        return RaceInfo(self.event_race_info.season, self.event_race_info.division, self.event_race_info.date, self.current_url, u"{}, {}".format(self.event_race_info.name, self.current_name))
 
     def handle_starttag(self, tag, attrs):
         if tag == "div" and SubdivisionParser.extract_attr(attrs, "class") == TEXT_RESULT_DIV_CLASS:
@@ -244,7 +244,7 @@ def process_race(race_info, race_store):
             print "Skipping mtec url due to no id: " + sub_race_info.url
 
 if __name__ == "__main__":
-    r = RaceInfo("2015", "2015-01-01","http://www.mtecresults.com/race/show/3824/2016_City_of_Lakes_Loppet_Festival-Columbia_Sportswear_Skate","COLL")
+    r = RaceInfo("2015", "101", "2015-01-01","http://www.mtecresults.com/race/show/3824/2016_City_of_Lakes_Loppet_Festival-Columbia_Sportswear_Skate","COLL")
     process_race(r)
-    r = RaceInfo("2011", "2011-01-01", "http://www.mtecresults.com/race/show/250/2011_Mora_Vasaloppet-58K_Freestyle", "Mora Vasaloppet")
+    r = RaceInfo("2011", "101","2011-01-01", "http://www.mtecresults.com/race/show/250/2011_Mora_Vasaloppet-58K_Freestyle", "Mora Vasaloppet")
     process_race(r)

@@ -71,11 +71,10 @@ def get_event_id_from_url(event_url):
     :param event_url: chronotrack url (str)
     :return: event id contained in url, None if not present (int)
     """
-    EVENT_KEY = "event-"
-    event_regex = re.compile(EVENT_KEY + "[0-9]+")
+    event_regex = re.compile("event-([0-9]+)")
     match = event_regex.search(event_url)
     if match:
-        return match.group(0).lstrip(EVENT_KEY)
+        return match.group(1)
     else:
         return None
 
@@ -152,7 +151,7 @@ def process_events(event_race_info, event_url, race_store):
             race_count += 1
             chronotrack_race_url = CHRONOTRACK_AJAX_RESULTS_URL % (race_pair[0], event_id)
             race_name = "%s - %s" % (event_race_info.name, race_pair[1], )
-            race_info = RaceInfo(event_race_info.season, event_race_info.date, chronotrack_race_url, race_name)
+            race_info = RaceInfo(event_race_info.season, event_race_info.division, event_race_info.date, chronotrack_race_url, race_name)
 
             if race_info in race_store:
                 # todo logging
@@ -194,5 +193,5 @@ def process_race_from_landing(race_info, race_store):
         print("Failed to find results page for itiming url: " + race_info.url)
 
 if __name__ == "__main__":
-    r = RaceInfo("2015","2016-01-01", "http://www.itiming.com/html/raceresults.php?year=2016&EventId=1322&eventype=0", "Pre-birkie")
+    r = RaceInfo("2015", "101", "2016-01-01", "http://www.itiming.com/html/raceresults.php?year=2016&EventId=1322&eventype=0", "Pre-birkie")
     process_race_from_landing(r)

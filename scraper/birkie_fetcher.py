@@ -23,6 +23,7 @@ URL_PREFETCH_PRE2007 = "http://www.birkie.com/ski/events/birkie/results/"
 
 # todo this is dynamic
 BIRKIE_RACE_NAME = "American Birkebeiner"
+BIRKIE_RACE_DIVISION = config.get_as_string("CITIZEN_DIVISION")
 
 class Birkie2014Parser(HTMLParser):
     """
@@ -253,7 +254,7 @@ def handle2014On(season, race_store):
     for div_ix, div in enumerate(RACES):
         # todo get date of race
         url_for_db = BASE_URL_FORMAT_2014ON % (year, URL_2007ON_DB_URL_PAGE, URL_2014ON_DB_DIV_ID)
-        race_info = RaceInfo(season, str(year), url_for_db, "%s %s" % (BIRKIE_RACE_NAME, div))
+        race_info = RaceInfo(season, BIRKIE_RACE_DIVISION, str(year), url_for_db, "%s %s" % (BIRKIE_RACE_NAME, div))
 
         if race_info in race_store:
             # todo logging
@@ -320,7 +321,7 @@ def handle2007To2015(season, race_store):
         race_name = prefetch_parser.event_names[ix]
         # todo get actual date of the race
         url_for_db = BASE_URL_FORMAT_2007ON % (race_id, URL_2007ON_DB_URL_PAGE)
-        race_info = RaceInfo(season, str(year), url_for_db, race_name)
+        race_info = RaceInfo(season, BIRKIE_RACE_DIVISION, str(year), url_for_db, race_name)
         if race_info in race_store:
             # todo logging
             print("Skipping race (%s) that has already been processed." % (race_info))
@@ -381,7 +382,7 @@ def handlePre2007Season(season, race_store):
 
     for ix, race_name in enumerate(prefetch_parser.race_names):
         url = prefetch_parser.race_urls[ix]
-        race_info = RaceInfo(season, year, url, race_name)
+        race_info = RaceInfo(season, BIRKIE_RACE_DIVISION, year, url, race_name)
 
         if race_info in race_store:
             # todo logging
