@@ -1,6 +1,7 @@
 """
 A persistent store of RaceInfos stored in the race db
 Note that no actual race data is stored- just the metadata
+todo races could/ maybe should be added to this store as they are serialized. although that may leave things in inconsistent state
 """
 
 from RaceResults import RaceInfo

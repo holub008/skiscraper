@@ -54,6 +54,7 @@ class RaceInfo:
         # case: season is the prior year
         if date_with_month.month in (1, 2, 3, 4, 5):
             try:
+                # todo pretty sure this logic is wrong!
                 self.season = str(int(self.season) + 1)
             except:
                 print("Error: could not parse season as an integer")
@@ -63,6 +64,23 @@ class RaceInfo:
 
         race_date = datetime.strptime("%s.%s" % (self.season, day), '%Y.%b.%d')
         self.date = datetime.strftime(race_date, '%Y.%m.%d')
+
+    def set_season_from_date(self, date_format):
+        """
+        for the case when we have a reliable date and need to guess on the season
+        :param date_format: the expected format of self.date
+        :return the season assigned, None if not a reasonable date (int)
+        """
+        race_date = datetime.strptime(self.date.split(".")[0], date_format)
+
+        # booo strinteger type :'(
+        if race_date.month in (1, 2, 3, 4, 5):
+            self.season = str(race_date.year - 1)
+        elif race_date.month in (10, 11, 12):
+            self.season = str(race_date.year)
+        else:
+            return None
+        return self.season
 
     def serialize(self, cursor, result_type):
         """

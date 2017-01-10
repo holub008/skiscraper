@@ -4,6 +4,7 @@ import urllib2
 
 from configs import Configs
 from HTMLParser import HTMLParser
+import gopher_state_fetcher
 import itiming_fetcher
 import mtec_fetcher
 from RaceResults import RaceInfo, UnstructuredPDFRaceResults, UnstructuredTextRaceResults
@@ -141,8 +142,8 @@ def is_mtec_hosted(race_info):
     :param race_info: the race metadata to be inspected (RaceInfo)
     :return: if the given race is hosted plain text
     """
-    ss_re = re.compile(".*mtec\.com.*")
-    match = ss_re.search(race_info.url)
+    mt_re = re.compile(".*mtec\.com.*")
+    match = mt_re.search(race_info.url)
 
     return match is not None
 
@@ -152,10 +153,24 @@ def is_itiming_hosted(race_info):
     :param race_info:  the race metadata to be inspected (RaceInfo)
     :return: if the given race is hosted on itiming.com
     """
-    ss_re = re.compile(".*itiming\.com.*")
-    match = ss_re.search(race_info.url)
+    it_re = re.compile(".*itiming\.com.*")
+    match = it_re.search(race_info.url)
 
     return match is not None
+
+
+def is_gopher_state_hosted(race_info):
+    """
+    :param race_info: the race metadata (RaceInfo)
+    :return: if the
+    """
+    gs_re = re.compile(".*gopherstateevents\.com.*")
+    match = gs_re.search(race_info.url)
+
+    # barf, gopher state only makes hs results viewable via post requests, so skinnyski can't link to structured results
+    # instead, it links to an unstructured txt doc, which isn't as fun
+    # as such, we scrape race infos directly from gopher state and ignore the txt docs linked from skinnyski
+    return match is not None and not race_info.url.rstrip("/").endsWith("txt")
 
 
 def handle_skinnyski_pdf(race_info):
@@ -213,7 +228,7 @@ def handle_unrecognized(race_info):
 
 def process_race(race_info, race_store):
     """
-    determine how to handle this race and process accordingly
+    factory to determine how to handle this race and process accordingly
     :param race_info: race metadata (RaceInfo)
     :param race_store: existing races in the race db (RaceResultStore)
     :return: void
@@ -227,6 +242,8 @@ def process_race(race_info, race_store):
             mtec_fetcher.process_race(race_info, race_store)
         elif is_itiming_hosted(race_info):
             itiming_fetcher.process_race_from_landing(race_info, race_store)
+        elif is_gopher_state_hosted(race_info):
+            gopher_state_fetcher.process_race(race_info, race_store)
         else:
             handle_unrecognized(race_info)
 

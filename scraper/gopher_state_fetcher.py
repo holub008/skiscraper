@@ -5,6 +5,7 @@ we can get structured results here :)
 """
 
 from HTMLParser import HTMLParser
+import re
 import urllib2
 
 from configs import Configs
@@ -14,6 +15,8 @@ import RaceResultStore
 config = Configs()
 DEFAULT_CITIZEN_POST_DATA = {"gender":"b", "submit_race":"submit_race", "get_race":"view"}
 DEFAULT_HS_POST_DATA = {"submit_meet":"submit_meet", "get_meet":"View+This+Meet"}
+
+HS_RACE_INFO_PAGE = "http://www.gopherstateevents.com/results/cc_rslts/cc_rslts.asp?sport=nordic"
 
 
 class GopherStateEventInfoParser(HTMLParser):
@@ -42,14 +45,78 @@ class GopherStateHSRaceInfoParser(HTMLParser):
     def __init__(self):
         HTMLParser.__init__(self)
 
+        # capture groups 1. name 2. date
+        self.content_re = re.compile("(.+).*(\([0-9/]+/\))")
+        self.division = config.get_as_string("HS_DIVISION")
+        self.date_format = "%m/%d/%Y"
+
+        self.in_meet_list = False
+        self.in_meet_option = False
+
         self.race_infos = []
+        self.post_ids = []
+
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "select" and self.extract_attr(attrs, "id") == "meets":
+            self.in_meet_list = True
+        elif self.in_meet_list and tag == "option":
+            self.in_meet_option = True
+            self.post_ids.append(self.extract_attr(attrs, "id"))
+
+    def handle_endtag(self, tag):
+        if tag == "select":
+            self.in_meet_list = False
+
+    def handle_data(self, data):
+        if self.in_meet_option:
+            match = self.content_re.search(data)
+            if match:
+                race_name = match.group(1)
+                race_date = match.group(2)
+
+                race_info = RaceInfo(None, self.division, race_date, HS_RACE_INFO_PAGE, race_name)
+                race_info.set_season_from_date(self.date_format)
 
     def get_race_infos(self):
         """
-        :return: high school race infos that we found (RaceInfo)
+        :return: high school race infos that we found (List<RaceInfo>)
         """
         return self.race_infos
 
+    def get_post_ids(self):
+        """
+        todo loose coupling
+        :return: ids associated with the parsed race_infos (List<Integer>)
+        """
+        return self.post_ids
+
+    @staticmethod
+    def extract_attr(attrs, attr_name):
+        for attr in attrs:
+            if len(attr) == 2:
+                if attr[0] == attr_name:
+                    return attr[1]
+        return None
+
+
+class GopherStateHSResultParser(HTMLParser):
+    def __init__(self):
+        HTMLParser.__init__(self)
+
+        self.race_infos = []
+
+    def handle_starttag(self, tag, attrs):
+        pass
+
+    def handle_endtag(self, tag):
+        pass
+
+    def handle_data(self, data):
+        pass
+
+    def get_race_infos(self):
+        return self.race_infos
 
 class GopherStateRaceResultParser(HTMLParser):
     """
@@ -120,7 +187,7 @@ def process_race(event_info, race_store):
 
                 StructuredRaceResults(race_info, parser.get_race_results()).serialize()
 
-def process_hs_race(event_info, meet_id, race_store):
+def process_hs_event(event_info, meet_id, race_store):
     """
     this is for hs races! yeah for dupicated logic!
     :param event_info:
@@ -138,12 +205,26 @@ def process_hs_race(event_info, meet_id, race_store):
         print("Warning: skipping fetch for gopher state hs event: %s" % (event_info))
         return
     for race_info in event_parser.get_race_names_ids():
-        pass # quitting, defeated for the evening...
+        race_parser = GopherStateHSResultParser()
 
 
-def get_hs_race_infos():
+def fetch_hs_races(race_store):
+    """
+    :param race_store: a store of races we currently have
+    :return: void
+    """
     parser = GopherStateHSRaceInfoParser()
-    #todo
+
+    content = get_gopher_state_content(HS_RACE_INFO_PAGE)
+    if not content:
+        print("Warning: skipping fetch for all gopher state highschool events!")
+        return
+
+    parser.feed(content)
+    for ix, event_info in enumerate(parser.get_race_infos()):
+        process_hs_event(event_info, parser.get_post_ids()[ix])
+
+
     
 if __name__ == "__main__":
     race_store = RaceResultStore.RaceResultStore()
